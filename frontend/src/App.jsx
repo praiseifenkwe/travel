@@ -4,6 +4,7 @@ import { Navbar } from './components/shared/Navbar';
 import { Landing } from './pages/Landing';
 import { ClientPortal } from './pages/ClientPortal';
 import { StaffDashboard } from './pages/StaffDashboard';
+import { LiveDemoSimulator } from './pages/LiveDemoSimulator';
 import { useSocket } from './hooks/useSocket';
 
 export default function App() {
@@ -18,6 +19,7 @@ export default function App() {
             <Route path="/" element={<Landing />} />
             <Route path="/client" element={<ClientPortal />} />
             <Route path="/dashboard" element={<StaffDashboard />} />
+            <Route path="/demo" element={<LiveDemoSimulator />} />
           </Routes>
         </main>
       </div>

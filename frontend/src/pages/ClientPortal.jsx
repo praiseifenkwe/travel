@@ -4,6 +4,8 @@ import { UploadZone } from '../components/documents/UploadZone';
 import { DocumentCard } from '../components/documents/DocumentCard';
 import { VisaSummaryCard } from '../components/visa/VisaSummaryCard';
 import { FlightCards } from '../components/flights/FlightCards';
+import { RelocationTimeline } from '../components/visa/RelocationTimeline';
+import { DossierModal } from '../components/shared/DossierModal';
 import { apiService } from '../services/api';
 import { useSocket } from '../hooks/useSocket';
 import { Sparkles, CheckCircle2, AlertTriangle, ArrowRight, ShieldCheck, Plane, FileText } from 'lucide-react';
@@ -29,6 +31,7 @@ export const ClientPortal = () => {
   const [loadingChat, setLoadingChat] = useState(false);
   const [selectedDocType, setSelectedDocType] = useState('passport');
   const [appStage, setAppStage] = useState('intake');
+  const [dossierOpen, setDossierOpen] = useState(false);
   const [appData, setAppData] = useState({
     client_name: 'Tunde Adeyemi',
     destination: 'United Kingdom',
@@ -334,6 +337,11 @@ export const ClientPortal = () => {
 
           {/* Relocation Flight Logistics */}
           <FlightCards flights={flights} />
+
+          {/* 30-Day Relocation Journey Roadmap */}
+          <RelocationTimeline />
+
+          <DossierModal isOpen={dossierOpen} onClose={() => setDossierOpen(false)} appData={appData} documents={documents} />
         </div>
       </div>
     </div>
