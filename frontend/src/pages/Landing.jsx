@@ -2,233 +2,232 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Plane, 
-  Compass, 
-  Luggage, 
-  ShieldCheck, 
-  ArrowRight, 
-  CheckCircle2, 
-  Search, 
   MapPin, 
   Calendar, 
-  Sparkles, 
-  Globe2, 
-  FileText, 
-  CreditCard, 
+  ArrowRight, 
+  CheckCircle2, 
+  ShieldCheck, 
   Clock, 
-  Bot,
-  Hotel,
-  AlertCircle,
-  User
+  CreditCard, 
+  FileText, 
+  Sparkles,
+  Luggage,
+  Globe2
 } from 'lucide-react';
 
 export const Landing = () => {
-  const [selectedDestination, setSelectedDestination] = useState('London (UK)');
-  const [selectedPurpose, setSelectedPurpose] = useState('Tourist & Vacation');
+  const [destination, setDestination] = useState('dubai');
+  const [purpose, setPurpose] = useState('tourism');
 
-  const popularTrips = [
-    { city: 'London, United Kingdom', flag: '🇬🇧', visa: 'Standard Visitor Visa (6 Months)', flightsFrom: '₦1,450,000' },
-    { city: 'Dubai, United Arab Emirates', flag: '🇦🇪', visa: '30-Day Tourist e-Visa', flightsFrom: '₦890,000' },
-    { city: 'Paris, France (Schengen)', flag: '🇫🇷', visa: 'Schengen Short-Stay Visa (Type C)', flightsFrom: '₦1,620,000' },
-    { city: 'Nairobi, Kenya', flag: '🇰🇪', visa: 'Electronic Travel Authorisation (eTA)', flightsFrom: '₦680,000' }
-  ];
+  const destinationData = {
+    dubai: {
+      name: 'Dubai, United Arab Emirates',
+      flag: '🇦🇪',
+      visaType: '30-Day Tourist e-Visa (100% Online)',
+      processingTime: '3 - 5 Days',
+      visaFee: '$120 (~₦185,000)',
+      flightPrice: '₦890,000',
+      airline: 'Emirates / Qatar Airways (Direct)',
+      docs: ['Passport Bio Page (6+ months validity)', 'Confirmed Return Ticket', 'Hotel Booking Confirmation'],
+      badge: 'Easy Online Visa'
+    },
+    uk: {
+      name: 'London, United Kingdom',
+      flag: '🇬🇧',
+      visaType: 'UK Standard Visitor Visa (6 Months)',
+      processingTime: '10 - 15 Days',
+      visaFee: '£115 (~₦230,000)',
+      flightPrice: '₦1,450,000',
+      airline: 'British Airways / Virgin Atlantic (Direct)',
+      docs: ['Passport Bio Page (6+ months validity)', 'Return Flight Reservation', 'Proof of Funds (3-Month Statement)', 'Hotel Reservation'],
+      badge: 'Embassy Drop-off'
+    },
+    france: {
+      name: 'Paris, France (Schengen)',
+      flag: '🇫🇷',
+      visaType: 'Schengen Short-Stay Tourist Visa (Type C)',
+      processingTime: '15 Days',
+      visaFee: '€90 (~₦160,000)',
+      flightPrice: '₦1,620,000',
+      airline: 'Air France (Direct from Lagos)',
+      docs: ['Passport Bio Page', 'Schengen Travel Insurance (€30k coverage)', 'Confirmed Return Flight', 'Proof of Funds'],
+      badge: 'VFS Biometrics'
+    },
+    kenya: {
+      name: 'Nairobi, Kenya',
+      flag: '🇰🇪',
+      visaType: 'Electronic Travel Authorisation (eTA)',
+      processingTime: '24 - 48 Hours',
+      visaFee: '$34 (~₦52,000)',
+      flightPrice: '₦680,000',
+      airline: 'Kenya Airways (Direct from Lagos)',
+      docs: ['Passport Bio Page', 'Return Flight Ticket', 'Hotel Confirmation'],
+      badge: 'Instant eTA'
+    }
+  };
+
+  const current = destinationData[destination] || destinationData.dubai;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
-      {/* Top Banner */}
-      <div className="bg-brand-50 border-b border-brand-100 px-4 py-2.5 text-center text-xs sm:text-sm font-semibold text-brand-800 flex items-center justify-center gap-2">
-        <Sparkles className="w-4 h-4 text-brand-600" />
-        <span>Plan Trips, Check Visa Requirements & Book Flights in Minutes</span>
-        <span className="hidden md:inline text-brand-300">•</span>
-        <span className="hidden md:inline text-brand-700">Zero Embassy Rejection Guarantee</span>
-      </div>
+      {/* Hero Section */}
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-20 text-center">
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold bg-white border border-slate-200 text-slate-700 shadow-sm mb-6">
+          <Globe2 className="w-4 h-4 text-brand-600" />
+          <span>The Smart International Travel & Visa Guide</span>
+        </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-24">
-        {/* Hero Section */}
-        <div className="text-center max-w-4xl mx-auto mb-14">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold bg-white border border-slate-200 shadow-subtle text-slate-700 mb-6">
-            <Globe2 className="w-4 h-4 text-brand-600" />
-            <span>The All-in-One Smart Travel & Visa Companion</span>
-          </div>
+        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-tight mb-6">
+          Know your visa requirements <br className="hidden sm:inline" />
+          <span className="text-brand-600">before you book your flight</span>.
+        </h1>
 
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.12] mb-6">
-            Travel anywhere in the world with <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 to-indigo-600">zero visa stress</span>.
-          </h1>
+        <p className="text-lg text-slate-600 max-w-2xl mx-auto mb-12">
+          Check visa requirements for any country, verify your documents so you don't get rejected, and book verified return flights with free holds.
+        </p>
 
-          <p className="text-lg sm:text-xl text-slate-600 leading-relaxed max-w-2xl mx-auto mb-10">
-            Whether you're taking a vacation to Dubai, a holiday in London, attending a business conference, or relocating abroad — TravelForge checks your entry rules, verifies your travel documents, and reserves your flights.
-          </p>
-
-          {/* Quick Interactive Search / Explorer Box */}
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-card p-4 sm:p-5 max-w-3xl mx-auto mb-10">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4 text-left">
-              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-                  Flying From:
-                </span>
-                <div className="flex items-center gap-2 font-bold text-slate-900 text-sm">
-                  <MapPin className="w-4 h-4 text-brand-600" />
-                  <span>Lagos (LOS), Nigeria</span>
-                </div>
-              </div>
-
-              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-                  Destination:
-                </span>
-                <div className="flex items-center gap-2 font-bold text-slate-900 text-sm">
-                  <Plane className="w-4 h-4 text-indigo-600" />
-                  <span>London / Dubai / Paris</span>
-                </div>
-              </div>
-
-              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-                  Travel Purpose:
-                </span>
-                <div className="flex items-center gap-2 font-bold text-slate-900 text-sm">
-                  <Luggage className="w-4 h-4 text-emerald-600" />
-                  <span>Vacation / Business</span>
-                </div>
+        {/* The Clean Search Box */}
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-card p-6 max-w-3xl mx-auto text-left mb-12">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+            {/* Passport */}
+            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
+              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                Your Passport:
+              </label>
+              <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
+                <span className="text-base">🇳🇬</span>
+                <span>Nigeria</span>
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-              <span className="text-xs text-slate-500 font-medium">
-                Instant passport entry check for Nigerian & African passport holders
-              </span>
-              <Link
-                to="/client"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-white bg-brand-600 hover:bg-brand-700 shadow-subtle hover:shadow transition-all text-sm"
+            {/* Destination Selector */}
+            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
+              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                Traveling To:
+              </label>
+              <select
+                value={destination}
+                onChange={(e) => setDestination(e.target.value)}
+                className="w-full bg-transparent text-sm font-bold text-slate-900 outline-none cursor-pointer"
               >
-                Plan My Trip & Check Visas
-                <ArrowRight className="w-4 h-4" />
-              </Link>
+                <option value="dubai">🇦🇪 Dubai, UAE</option>
+                <option value="uk">🇬🇧 London, United Kingdom</option>
+                <option value="france">🇫🇷 Paris, France (Schengen)</option>
+                <option value="kenya">🇰🇪 Nairobi, Kenya</option>
+              </select>
+            </div>
+
+            {/* Purpose */}
+            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
+              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                Trip Purpose:
+              </label>
+              <select
+                value={purpose}
+                onChange={(e) => setPurpose(e.target.value)}
+                className="w-full bg-transparent text-sm font-bold text-slate-900 outline-none cursor-pointer"
+              >
+                <option value="tourism">🏖️ Holiday / Tourism</option>
+                <option value="business">💼 Business / Conference</option>
+                <option value="study">🎓 Study / Student</option>
+              </select>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-3">
+          {/* Instant Destination Result Preview */}
+          <div className="p-5 rounded-2xl bg-brand-50/50 border border-brand-200 mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-brand-100">
+              <div className="flex items-center gap-3">
+                <span className="text-3xl">{current.flag}</span>
+                <div>
+                  <div className="text-base font-extrabold text-slate-900">{current.name}</div>
+                  <div className="text-xs text-brand-700 font-bold">{current.visaType}</div>
+                </div>
+              </div>
+              <span className="text-xs font-bold text-emerald-800 bg-emerald-100/80 px-3 py-1 rounded-full self-start">
+                {current.badge}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 text-xs">
+              <div>
+                <span className="text-slate-500 font-medium block">Processing Time:</span>
+                <span className="font-bold text-slate-900 text-sm mt-0.5 block">{current.processingTime}</span>
+              </div>
+              <div>
+                <span className="text-slate-500 font-medium block">Visa Fee:</span>
+                <span className="font-bold text-slate-900 text-sm mt-0.5 block">{current.visaFee}</span>
+              </div>
+              <div>
+                <span className="text-slate-500 font-medium block">Flights From:</span>
+                <span className="font-bold text-emerald-700 text-sm mt-0.5 block">{current.flightPrice}</span>
+              </div>
+              <div>
+                <span className="text-slate-500 font-medium block">Airline:</span>
+                <span className="font-bold text-slate-900 text-sm mt-0.5 block truncate">{current.airline}</span>
+              </div>
+            </div>
+
+            {/* Document Checklist Preview */}
+            <div className="mt-4 pt-4 border-t border-brand-100">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
+                What you will need for this trip:
+              </div>
+              <div className="space-y-1.5">
+                {current.docs.map((d, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs text-slate-700">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>{d}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+            <span className="text-xs text-slate-500">
+              Verified against current 2026 consular entry regulations.
+            </span>
             <Link
               to="/client"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-brand-700 bg-brand-50 hover:bg-brand-100 border border-brand-200 transition-colors"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-bold text-white bg-brand-600 hover:bg-brand-700 shadow-sm hover:shadow transition-all text-sm"
             >
-              <User className="w-4 h-4 text-brand-600" />
-              Open Traveler Portal
-            </Link>
-
-            <Link
-              to="/dashboard"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 transition-colors"
-            >
-              <Compass className="w-4 h-4 text-slate-500" />
-              Travel Agency Console
-            </Link>
-
-            <Link
-              to="/demo"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-colors"
-            >
-              <Sparkles className="w-4 h-4 text-indigo-600" />
-              Live Demo Simulator
+              Plan Trip & Check Documents
+              <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
         </div>
 
-        {/* Popular Destinations Grid */}
-        <div className="mb-20">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-xl font-black text-slate-900 tracking-tight">
-                Popular Travel Destinations & Visa Requirements
-              </h2>
-              <p className="text-xs text-slate-500">
-                Curated rules, flight routes, and document checklists for frequent travelers
-              </p>
+        {/* 3 Simple Value Points */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+          <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm">
+            <div className="w-10 h-10 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center mb-4">
+              <ShieldCheck className="w-5 h-5" />
             </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {popularTrips.map((trip, i) => (
-              <div
-                key={i}
-                className="p-5 rounded-2xl bg-white border border-slate-200 shadow-card hover:shadow-card-hover transition-all flex flex-col justify-between"
-              >
-                <div>
-                  <div className="text-2xl mb-2">{trip.flag}</div>
-                  <h3 className="font-bold text-slate-900 text-sm">{trip.city}</h3>
-                  <div className="text-xs text-brand-700 font-semibold mt-1 bg-brand-50 px-2 py-0.5 rounded border border-brand-100 inline-block">
-                    {trip.visa}
-                  </div>
-                </div>
-
-                <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between">
-                  <div>
-                    <span className="text-[10px] text-slate-400 block font-medium">Return Flights from</span>
-                    <span className="text-xs font-extrabold text-slate-900">{trip.flightsFrom}</span>
-                  </div>
-                  <Link
-                    to="/client"
-                    className="p-2 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-brand-600 transition-colors"
-                  >
-                    <ArrowRight className="w-4 h-4" />
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* 3 Core Platform Pillars */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-20">
-          <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-card hover:shadow-card-hover transition-all">
-            <div className="w-12 h-12 rounded-2xl bg-brand-50 border border-brand-100 flex items-center justify-center text-brand-600 mb-5">
-              <ShieldCheck className="w-6 h-6" />
-            </div>
-            <h3 className="text-base font-bold text-slate-900 mb-2">Automated Visa Document Verification</h3>
+            <h3 className="font-bold text-slate-900 text-sm mb-1.5">1. Pre-Check Your Documents</h3>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Upload your passport, flight reservation, hotel proof, and bank statement. Our AI scans them against official embassy guidelines to prevent costly application rejections.
+              Upload your passport, hotel reservation, and tickets. We check for common mistakes before you apply so your visa doesn't get delayed.
             </p>
           </div>
 
-          <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-card hover:shadow-card-hover transition-all">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 mb-5">
-              <Plane className="w-6 h-6" />
+          <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4">
+              <Plane className="w-5 h-5" />
             </div>
-            <h3 className="text-base font-bold text-slate-900 mb-2">Verified Flights & Free 72-Hour Holds</h3>
+            <h3 className="font-bold text-slate-900 text-sm mb-1.5">2. Hold Flights for Free</h3>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Reserve genuine airline tickets (British Airways, Emirates, Virgin Atlantic, Qatar Airways) with 2 × 23kg baggage allowances and free holds while your visa is being processed.
+              Hold airline seats on Emirates, British Airways, or Qatar Airways for 72 hours without paying upfront while your visa is being approved.
             </p>
           </div>
 
-          <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-card hover:shadow-card-hover transition-all">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 mb-5">
-              <Bot className="w-4 h-4" />
+          <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-4">
+              <FileText className="w-5 h-5" />
             </div>
-            <h3 className="text-base font-bold text-slate-900 mb-2">24/7 AI Travel Concierge</h3>
+            <h3 className="font-bold text-slate-900 text-sm mb-1.5">3. Instant Travel Itinerary</h3>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Have questions about currency exchange rates, airport transit rules, visa biometric appointments, or what documents to carry? Your personal travel assistant is always online.
+              Get an official verified trip itinerary with all your flight confirmations, hotel bookings, and entry documents in one clean PDF.
             </p>
-          </div>
-        </div>
-
-        {/* Live Metrics */}
-        <div className="rounded-3xl bg-white border border-slate-200 shadow-card p-8">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 divide-y lg:divide-y-0 lg:divide-x divide-slate-200 text-center">
-            <div className="pt-3 lg:pt-0">
-              <div className="text-3xl font-black text-slate-900 mb-1">50+</div>
-              <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Countries Covered</div>
-            </div>
-            <div className="pt-3 lg:pt-0">
-              <div className="text-3xl font-black text-emerald-600 mb-1">99.8%</div>
-              <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Visa Document Accuracy</div>
-            </div>
-            <div className="pt-3 lg:pt-0">
-              <div className="text-3xl font-black text-brand-600 mb-1">&lt; 2 min</div>
-              <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Requirements Verification</div>
-            </div>
-            <div className="pt-3 lg:pt-0">
-              <div className="text-3xl font-black text-indigo-600 mb-1">₦0</div>
-              <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Hidden Agency Fees</div>
-            </div>
           </div>
         </div>
       </div>

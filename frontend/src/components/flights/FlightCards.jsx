@@ -28,10 +28,10 @@ export const FlightCards = ({ flights = [] }) => {
             <div
               key={fl.id}
               className={
-                'p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ' +
+                "p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 " +
                 (isBooked
-                  ? 'border-emerald-300 bg-emerald-50/40 ring-1 ring-emerald-400/30'
-                  : 'border-slate-200 hover:border-slate-300 bg-white')
+                  ? "border-emerald-300 bg-emerald-50/40 ring-1 ring-emerald-400/30"
+                  : "border-slate-200 hover:border-slate-300 bg-white")
               }
             >
               <div>
@@ -84,7 +84,7 @@ export const FlightCards = ({ flights = [] }) => {
           <div className="bg-white rounded-3xl border border-slate-200 shadow-dropdown max-w-md w-full p-6 relative animate-in fade-in zoom-in-95">
             <button
               onClick={() => setSelectedFlight(null)}
-              className="absolute top-5 right-5 p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+              className="absolute top-5 right-5 p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
