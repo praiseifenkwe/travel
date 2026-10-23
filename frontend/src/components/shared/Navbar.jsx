@@ -1,6 +1,6 @@
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Plane, Compass, User, FileText, CheckCircle2 } from 'lucide-react';
+﻿import React from "react";
+import { Link, useLocation } from "react-router-dom";
+import { Plane, Compass, Sparkles, ShieldCheck } from "lucide-react";
 
 export const Navbar = () => {
   const location = useLocation();
@@ -18,40 +18,58 @@ export const Navbar = () => {
           </span>
         </Link>
 
-        {/* Center Navigation */}
-        <nav className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+        {/* Center Navigation - Plain English Roles */}
+        <nav className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
+          <Link
+            to="/"
+            className={
+              "px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all " +
+              (location.pathname === "/"
+                ? "bg-white text-slate-900 shadow-sm"
+                : "text-slate-600 hover:text-slate-900")
+            }
+          >
+            Explore
+          </Link>
+
           <Link
             to="/client"
             className={
-              'px-4 py-1.5 rounded-lg text-xs font-bold transition-all ' +
-              (location.pathname === '/client'
-                ? 'bg-white text-slate-900 shadow-sm'
-                : 'text-slate-600 hover:text-slate-900')
+              "px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 " +
+              (location.pathname === "/client"
+                ? "bg-white text-slate-900 shadow-sm"
+                : "text-slate-600 hover:text-slate-900")
             }
           >
-            Traveler Portal
+            <Sparkles className="w-3.5 h-3.5 text-brand-600" />
+            <span>Trip Assistant</span>
           </Link>
 
           <Link
             to="/dashboard"
             className={
-              'px-4 py-1.5 rounded-lg text-xs font-bold transition-all ' +
-              (location.pathname === '/dashboard'
-                ? 'bg-white text-slate-900 shadow-sm'
-                : 'text-slate-600 hover:text-slate-900')
+              "px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 " +
+              (location.pathname === "/dashboard"
+                ? "bg-white text-slate-900 shadow-sm"
+                : "text-slate-600 hover:text-slate-900")
             }
           >
-            Agent Desk
+            <ShieldCheck className="w-3.5 h-3.5 text-slate-500" />
+            <span>Agency Review</span>
+            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-slate-200 text-slate-600">
+              Staff
+            </span>
           </Link>
         </nav>
 
-        {/* Right Action */}
+        {/* Right CTA */}
         <div className="flex items-center gap-3">
           <Link
             to="/client"
-            className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-brand-600 hover:bg-brand-700 shadow-sm transition-all"
+            className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-brand-600 hover:bg-brand-700 shadow-sm transition-all cursor-pointer"
           >
-            <span>My Trip</span>
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Plan My Trip</span>
           </Link>
         </div>
       </div>

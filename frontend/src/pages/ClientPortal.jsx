@@ -28,8 +28,10 @@ import {
 } from "lucide-react";
 import { Button } from "../components/shared/Button";
 import { Link } from "react-router-dom";
+import { apiService } from "../services/api";
 
 export const ClientPortal = () => {
+  const [sessionId] = useState(() => "session-" + Math.random().toString(36).substring(2, 9));
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [scanningPassport, setScanningPassport] = useState(false);
@@ -38,7 +40,7 @@ export const ClientPortal = () => {
   const chatEndRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // Live Trip Dossier State (Updated dynamically on the fly by the conversational AI agent)
+  // Live Trip Summary State (Populated on the fly as you chat)
   const [tripDossier, setTripDossier] = useState({
     destination: "Dubai, United Arab Emirates",
     countryCode: "AE",
@@ -78,7 +80,7 @@ export const ClientPortal = () => {
     {
       id: 1,
       role: "assistant",
-      text: "Hello Tunde! 👋 I am your TravelForge AI Concierge.\n\nYou do not need to fill out manual forms or upload paperwork to a checklist. Just chat with me naturally — I will ask for whatever details are needed on the fly, verify your passport, and lock down certified flight and hotel reservations for your visa.\n\nWhere are you planning to travel next?",
+      text: "Hello Tunde! 👋 I am your TravelForge AI Assistant.\n\nYou do not need to fill out forms or upload paperwork to a checklist. Just chat with me naturally — I will ask for whatever details are needed on the fly, verify your passport, and lock down certified flight and hotel reservations for your visa.\n\nWhere are you planning to travel next?",
       type: "text",
       options: [
         "🇦🇪 Dubai Vacation (Dec 20)",
@@ -98,7 +100,7 @@ export const ClientPortal = () => {
   }, [messages, isTyping, scanningPassport]);
 
 ﻿  // Handle Freeform or Option Sending
-  const handleSend = (textToSend) => {
+  const handleSend = async (textToSend) => {
     const text = textToSend || input;
     if (!text.trim()) return;
 
@@ -110,7 +112,28 @@ export const ClientPortal = () => {
 
     const lower = text.toLowerCase();
 
-    // Contextual Agent Dialogue Engine
+    // 1. First attempt to query the real backend RAG service
+    try {
+      const backendRes = await apiService.chat.sendMessage(text, sessionId);
+      if (backendRes && backendRes.reply && !backendRes.fallback) {
+        setIsTyping(false);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now() + 1,
+            role: "assistant",
+            text: backendRes.reply,
+            sources: backendRes.sources || [],
+            type: "text",
+          },
+        ]);
+        return;
+      }
+    } catch (e) {
+      console.warn("Backend chat unavailable, using local conversational fallback");
+    }
+
+    // 2. Resilient Contextual Conversational Fallback
     setTimeout(() => {
       setIsTyping(false);
 
@@ -122,7 +145,7 @@ export const ClientPortal = () => {
           countryCode: "AE",
           dates: "20 Dec – 28 Dec 2026",
           visaType: "30-Day Tourist e-Visa",
-          consularFee: "₦180,000 (~$120)"
+          consularFee: "₦180,000 (~$120)",
         }));
 
         setMessages((prev) => [
@@ -130,9 +153,9 @@ export const ClientPortal = () => {
           {
             id: Date.now() + 1,
             role: "assistant",
-            text: "Dubai in December is spectacular! ☀️ For Nigerian passport holders, UAE requires an official 30-Day Tourist e-Visa (processed 100% online in 3–4 days).\n\nTo begin assembling your visa dossier, consular clearance requires inspecting your passport bio page to certify 6-month validity.\n\nHow would you like to provide your passport details?",
-            type: "request_passport"
-          }
+            text: "Dubai in December is spectacular! ☀️ For Nigerian passport holders, UAE requires an official 30-Day Tourist e-Visa (processed 100% online in 3–4 days).\n\nTo begin your application, immigration requires inspecting your passport data page to certify 6-month validity.\n\nHow would you like to provide your passport details?",
+            type: "request_passport",
+          },
         ]);
       } else if (lower.includes("london") || lower.includes("uk") || lower.includes("united kingdom")) {
         setTripDossier((prev) => ({
@@ -142,7 +165,7 @@ export const ClientPortal = () => {
           countryCode: "GB",
           dates: "14 Nov – 28 Nov 2026",
           visaType: "UK Standard Visitor Visa",
-          consularFee: "£115 (~₦220,000)"
+          consularFee: "£115 (~₦220,000)",
         }));
 
         setMessages((prev) => [
@@ -151,8 +174,8 @@ export const ClientPortal = () => {
             id: Date.now() + 1,
             role: "assistant",
             text: "London for the holidays! 🇬🇧 The UK requires a Standard 6-Month Visitor Visa. Let us check your passport eligibility first on the fly.\n\nHow would you like to share your passport bio page?",
-            type: "request_passport"
-          }
+            type: "request_passport",
+          },
         ]);
       } else if (lower.includes("paris") || lower.includes("france")) {
         setTripDossier((prev) => ({
@@ -162,7 +185,7 @@ export const ClientPortal = () => {
           countryCode: "FR",
           dates: "10 Jan – 18 Jan 2027",
           visaType: "Schengen Short-Stay Visa (Type C)",
-          consularFee: "€90 (~₦155,000)"
+          consularFee: "€90 (~₦155,000)",
         }));
 
         setMessages((prev) => [
@@ -171,8 +194,8 @@ export const ClientPortal = () => {
             id: Date.now() + 1,
             role: "assistant",
             text: "Paris is wonderful! 🇫🇷 For Schengen short-stay visas, passport validity, return flights, and accommodation vouchers are strictly verified.\n\nLet us inspect your passport first on the fly:",
-            type: "request_passport"
-          }
+            type: "request_passport",
+          },
         ]);
       } else if (lower.includes("kenya") || lower.includes("nairobi")) {
         setTripDossier((prev) => ({
@@ -182,7 +205,7 @@ export const ClientPortal = () => {
           countryCode: "KE",
           dates: "05 Dec – 14 Dec 2026",
           visaType: "Kenya Electronic Travel Authorisation (eTA)",
-          consularFee: "$35 (~₦55,000)"
+          consularFee: "$35 (~₦55,000)",
         }));
 
         setMessages((prev) => [
@@ -191,11 +214,10 @@ export const ClientPortal = () => {
             id: Date.now() + 1,
             role: "assistant",
             text: "Kenya Safari! 🇰🇪 Kenya operates the seamless eTA system with rapid 72-hour turnaround. Please share your passport data page so I can pre-fill your clearance:",
-            type: "request_passport"
-          }
+            type: "request_passport",
+          },
         ]);
       } else if (lower.includes("hold") || lower.includes("emirates") || lower.includes("flight") || lower.includes("reserve flight")) {
-        // Trigger Flight Hold Confirmation
         setTripDossier((prev) => ({
           ...prev,
           flight: {
@@ -205,8 +227,8 @@ export const ClientPortal = () => {
             route: "Lagos (LOS) ⇄ Dubai (DXB)",
             dates: "20 Dec – 28 Dec 2026",
             pnr: "TF-EK89204",
-            price: "₦890,000 (Locked 72h)"
-          }
+            price: "₦890,000 (Locked 72h)",
+          },
         }));
 
         setMessages((prev) => [
@@ -214,12 +236,11 @@ export const ClientPortal = () => {
           {
             id: Date.now() + 1,
             role: "assistant",
-            text: "✈️ Seat Held! I have reserved Emirates Flight EK 784 (LOS ⇄ DXB) on your dates with 2 × 23kg checked bags included.\n\n• Reservation PNR: **TF-EK89204**\n• Status: **Confirmed 72-Hour Consular Hold** (No payment required upfront)\n\nNext consular requirement: Proof of accommodation in Dubai. Would you like me to issue a certified hotel accommodation voucher, or do you have a booking already?",
-            type: "request_hotel"
-          }
+            text: "✈️ Seat Held! I have reserved Emirates Flight EK 784 (LOS ⇄ DXB) on your dates with 2 × 23kg checked bags included.\n\n• Reservation PNR: **TF-EK89204**\n• Status: **Confirmed 72-Hour Reservation Hold** (No payment required upfront)\n\nNext step: Proof of hotel accommodation in Dubai. Would you like me to issue a certified hotel voucher, or do you have a booking already?",
+            type: "request_hotel",
+          },
         ]);
       } else if (lower.includes("atlantis") || lower.includes("hotel") || lower.includes("voucher") || lower.includes("issue") || lower.includes("downtown")) {
-        // Trigger Hotel Voucher Issuance
         setTripDossier((prev) => ({
           ...prev,
           hotel: {
@@ -227,8 +248,8 @@ export const ClientPortal = () => {
             name: "Atlantis The Palm, Dubai",
             location: "Crescent Road, Palm Jumeirah, Dubai",
             reference: "DXB-HTL-77421",
-            nights: "8 Nights (Dec 20 – Dec 28, 2026)"
-          }
+            nights: "8 Nights (Dec 20 – Dec 28, 2026)",
+          },
         }));
 
         setMessages((prev) => [
@@ -236,9 +257,9 @@ export const ClientPortal = () => {
           {
             id: Date.now() + 1,
             role: "assistant",
-            text: "🏨 Hotel Voucher Issued! I have generated a certified accommodation confirmation voucher for **Atlantis The Palm, Dubai** (8 Nights, Dec 20 – Dec 28, 2026).\n\n• Booking Reference: **DXB-HTL-77421**\n• Address: Palm Jumeirah, Dubai, UAE\n• Cancellation: Fully flexible consular refundable rate\n\n🎉 Your Visa Dossier is now 100% complete and fully verified! All 3 required immigration criteria are satisfied.",
-            type: "ready_to_submit"
-          }
+            text: "🏨 Hotel Voucher Issued! I have generated a certified accommodation confirmation voucher for **Atlantis The Palm, Dubai** (8 Nights, Dec 20 – Dec 28, 2026).\n\n• Booking Reference: **DXB-HTL-77421**\n• Address: Palm Jumeirah, Dubai, UAE\n• Cancellation: Fully flexible refundable rate\n\n🎉 Your Visa Application is now 100% complete and fully verified! All 3 required immigration criteria are satisfied.",
+            type: "ready_to_submit",
+          },
         ]);
       } else if (lower.includes("fee") || lower.includes("cost") || lower.includes("how much")) {
         setMessages((prev) => [
@@ -246,9 +267,9 @@ export const ClientPortal = () => {
           {
             id: Date.now() + 1,
             role: "assistant",
-            text: "The consular fee for " + tripDossier.destination + " (" + tripDossier.visaType + ") is " + tripDossier.consularFee + ". This covers the direct government entry permit and mandatory travel insurance. There are no hidden agency surcharges.",
-            type: "text"
-          }
+            text: "The government fee for " + tripDossier.destination + " (" + tripDossier.visaType + ") is " + tripDossier.consularFee + ". This covers the direct government entry permit and mandatory travel insurance. There are no surprise agency markups.",
+            type: "text",
+          },
         ]);
       } else if (lower.includes("vaccine") || lower.includes("yellow fever") || lower.includes("covid") || lower.includes("health")) {
         setMessages((prev) => [
@@ -257,8 +278,8 @@ export const ClientPortal = () => {
             id: Date.now() + 1,
             role: "assistant",
             text: "For travel between Nigeria and the UAE: COVID-19 PCR testing has been completely discontinued. However, you should carry your Yellow Fever vaccination card (yellow card) in your hand luggage as port health officials periodically inspect it upon departure from Lagos.",
-            type: "text"
-          }
+            type: "text",
+          },
         ]);
       } else if (lower.includes("how long") || lower.includes("time") || lower.includes("days")) {
         setMessages((prev) => [
@@ -266,9 +287,9 @@ export const ClientPortal = () => {
           {
             id: Date.now() + 1,
             role: "assistant",
-            text: "Standard processing turnaround for the " + tripDossier.visaType + " is currently " + tripDossier.processingTime + ". Once submitted, updates are tracked live on your agency desk.",
-            type: "text"
-          }
+            text: "Standard processing turnaround for " + tripDossier.visaType + " is currently " + tripDossier.processingTime + ". Once submitted, updates are tracked live on your agency desk.",
+            type: "text",
+          },
         ]);
       } else {
         setMessages((prev) => [
@@ -277,11 +298,11 @@ export const ClientPortal = () => {
             id: Date.now() + 1,
             role: "assistant",
             text: "I am actively tracking that for you! If you need any advice on currency exchange in " + tripDossier.destination + ", local SIM cards, or packing recommendations, just ask me.",
-            type: "text"
-          }
+            type: "text",
+          },
         ]);
       }
-    }, 650);
+    }, 600);
   };
 
   // Instant AI Passport Extraction & Verification Simulation
@@ -297,8 +318,8 @@ export const ClientPortal = () => {
           name: "Tunde Babatunde Adeyemi",
           number: "A12345678",
           expiry: "14 Nov 2031",
-          nationality: "Nigerian"
-        }
+          nationality: "Nigerian",
+        },
       }));
 
       setMessages((prev) => [
@@ -306,18 +327,18 @@ export const ClientPortal = () => {
         {
           id: Date.now(),
           role: "assistant",
-          text: "✅ Passport scanned and verified!\n\n• Holder: **Tunde Babatunde Adeyemi**\n• Passport No: **A12345678**\n• Nationality: **Nigeria (NGN)**\n• Expiry: **14 Nov 2031** (Meets the 6-month validity rule with 5+ years remaining ✓)\n\nNow for your travel itinerary: Consular regulations require a confirmed return flight reservation. I found direct Emirates seats departing Lagos Dec 20 and returning Dec 28 for ₦890,000 with 2 × 23kg checked bags included.\n\nWould you like me to place a free 72-hour seat hold on this flight for your visa application?",
-          type: "flight_offer"
-        }
+          text: "✅ Passport scanned and verified!\n\n• Holder: **Tunde Babatunde Adeyemi**\n• Passport No: **A12345678**\n• Nationality: **Nigeria (NGN)**\n• Expiry: **14 Nov 2031** (Meets the 6-month validity rule with 5+ years remaining ✓)\n\nNow for your flights: Consular regulations require a confirmed return flight reservation. I found direct Emirates seats departing Lagos Dec 20 and returning Dec 28 for ₦890,000 with 2 × 23kg checked bags included.\n\nWould you like me to place a free 72-hour seat hold on this flight for your visa application?",
+          type: "flight_offer",
+        },
       ]);
-    }, 900);
+    }, 800);
   };
 
   // Calculate Completion Percentage
   const completionSteps = [
     tripDossier.passport.status === "verified",
     tripDossier.flight.status === "held",
-    tripDossier.hotel.status === "verified"
+    tripDossier.hotel.status === "verified",
   ];
   const completedCount = completionSteps.filter(Boolean).length;
   const progressPercent = Math.round((completedCount / 3) * 100);
@@ -325,25 +346,25 @@ export const ClientPortal = () => {
 
 ﻿  return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      {/* Top Header & Concierge Status */}
+      {/* Top Header & Assistant Status */}
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
         <div>
           <div className="flex items-center gap-2 text-xs font-bold text-brand-600 mb-1">
             <Sparkles className="w-4 h-4" />
-            <span>AI-Native Travel Concierge</span>
+            <span>AI Travel Assistant</span>
           </div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-            Conversational Travel & Visa Workspace
+            Plan Your Trip & Visa
           </h1>
           <p className="text-xs text-slate-500">
-            No manual forms or uploading queues. The AI agent asks for what it needs on the fly and assembles your verified travel file.
+            Tell the assistant where you want to go. It checks visa rules, verifies your passport, and reserves flights on the fly.
           </p>
         </div>
 
         <div className="flex items-center gap-2.5">
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            AI Agent Online
+            Assistant Ready
           </div>
           <button
             onClick={() => {
@@ -371,12 +392,12 @@ export const ClientPortal = () => {
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-xs font-semibold shadow-sm transition-colors cursor-pointer"
           >
             <RefreshCw className="w-3.5 h-3.5" />
-            Reset Trip
+            Start Over
           </button>
         </div>
       </div>
 
-      {/* Main Grid: Left = Chat Workspace, Right = Live Assembled Trip Dossier */}
+      {/* Main Grid: Left = Chat, Right = Live Trip Summary */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
         {/* Left Column: Conversational AI Agent Stream */}
@@ -389,13 +410,13 @@ export const ClientPortal = () => {
               </div>
               <div>
                 <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                  TravelForge Concierge
+                  TravelForge Assistant
                   <span className="text-[10px] text-emerald-700 bg-emerald-100/70 font-semibold px-2 py-0.2 rounded-full">
-                    Active
+                    Online
                   </span>
                 </div>
                 <div className="text-[11px] text-slate-500">
-                  Direct intake with on-the-fly verification
+                  Instant visa guidance & bookings
                 </div>
               </div>
             </div>
@@ -435,6 +456,11 @@ export const ClientPortal = () => {
                     }
                   >
                     {msg.text}
+                    {msg.sources && msg.sources.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-slate-200/60 text-[10px] text-slate-400">
+                        Source: {msg.sources.join(", ")}
+                      </div>
+                    )}
                   </div>
 
                   {/* Suggestion Option Chips */}
@@ -458,22 +484,22 @@ export const ClientPortal = () => {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 text-xs font-bold text-brand-900">
                           <FileText className="w-4 h-4 text-brand-600" />
-                          <span>On-The-Fly Passport Verification</span>
+                          <span>Check Passport Validity</span>
                         </div>
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-100 text-brand-800">
-                          Required by UAE
+                          Required by Immigration
                         </span>
                       </div>
 
                       <p className="text-xs text-slate-600">
-                        The agent will extract your MRZ line, test 6-month validity, and certify identity for consular filing.
+                        The assistant will read your passport bio page and confirm it meets the mandatory 6-month validity rule.
                       </p>
 
                       {scanningPassport ? (
                         <div className="p-4 rounded-xl bg-white border border-brand-200 text-center space-y-2">
                           <div className="flex items-center justify-center gap-2 text-brand-700 text-xs font-bold">
                             <RefreshCw className="w-4 h-4 animate-spin" />
-                            <span>AI Vision parsing passport bio-data & MRZ...</span>
+                            <span>AI reading passport details & expiry date...</span>
                           </div>
                           <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
                             <div className="h-full bg-brand-600 rounded-full animate-pulse w-3/4" />
@@ -505,7 +531,7 @@ export const ClientPortal = () => {
                               <span>Camera Snap / Upload</span>
                             </div>
                             <div className="text-[11px] text-slate-500 mt-0.5">
-                              Instant OCR & MRZ check
+                              Instant passport check
                             </div>
                           </button>
                         </div>
@@ -542,7 +568,7 @@ export const ClientPortal = () => {
 
                       <div className="flex items-center justify-between pt-1">
                         <div>
-                          <span className="text-[10px] text-slate-400 block font-semibold">Consular Ticket Hold:</span>
+                          <span className="text-[10px] text-slate-400 block font-semibold">Locked Ticket Price:</span>
                           <span className="font-black text-slate-900 text-sm">₦890,000</span>
                         </div>
                         <button
@@ -562,15 +588,15 @@ export const ClientPortal = () => {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 text-xs font-bold text-indigo-950">
                           <Hotel className="w-4 h-4 text-indigo-600" />
-                          <span>Proof of Accommodation</span>
+                          <span>Hotel Accommodation</span>
                         </div>
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">
-                          Consular Requirement
+                          Required for Visa
                         </span>
                       </div>
 
                       <p className="text-xs text-slate-600">
-                        Select an option — the agent will either issue a refundable voucher or verify your existing booking voucher:
+                        Choose a hotel option — the assistant will issue an official voucher for your dates:
                       </p>
 
                       <div className="grid grid-cols-1 gap-2">
@@ -580,7 +606,7 @@ export const ClientPortal = () => {
                         >
                           <div>
                             <div className="text-xs font-bold text-slate-900">
-                              🏨 Issue Certified Voucher: Atlantis The Palm
+                              🏨 Issue Hotel Voucher: Atlantis The Palm
                             </div>
                             <div className="text-[11px] text-slate-500 mt-0.5">
                               8 Nights (Dec 20 – Dec 28) • Complimentary for visa filing
@@ -595,10 +621,10 @@ export const ClientPortal = () => {
                         >
                           <div>
                             <div className="text-xs font-bold text-slate-900">
-                              🏙️ Issue Certified Voucher: Downtown Marina Suite
+                              🏙️ Issue Hotel Voucher: Downtown Marina Suite
                             </div>
                             <div className="text-[11px] text-slate-500 mt-0.5">
-                              8 Nights • Instant consular confirmation reference
+                              8 Nights • Instant booking reference
                             </div>
                           </div>
                           <ArrowRight className="w-4 h-4 text-indigo-600 shrink-0" />
@@ -612,10 +638,10 @@ export const ClientPortal = () => {
                     <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 space-y-3">
                       <div className="flex items-center gap-2 text-emerald-900 font-bold text-xs">
                         <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                        <span>All 3 Consular Requirements Satisfied</span>
+                        <span>All 3 Requirements Completed</span>
                       </div>
                       <p className="text-xs text-emerald-800 leading-relaxed">
-                        Passport data verified, Emirates flight held, and Atlantis The Palm voucher confirmed.
+                        Passport verified, Emirates flight held, and hotel accommodation voucher confirmed.
                       </p>
                       <div className="flex gap-2 pt-1">
                         <Button
@@ -631,7 +657,7 @@ export const ClientPortal = () => {
                           onClick={() => setPreviewDossierModal(true)}
                           className="px-3 py-1.5 rounded-xl border border-emerald-300 bg-white hover:bg-emerald-50 text-emerald-800 text-xs font-bold shadow-sm transition-colors cursor-pointer"
                         >
-                          Preview Package
+                          Review Summary
                         </button>
                       </div>
                     </div>
@@ -700,14 +726,14 @@ export const ClientPortal = () => {
           </form>
         </div>
 
-        {/* Right Column: Live Trip Dossier HUD */}
+        {/* Right Column: Live Trip Summary */}
         <div className="lg:col-span-5 space-y-5">
           <div className="bg-white rounded-3xl border border-slate-200 shadow-card p-6">
-            {/* Dossier Header */}
+            {/* Summary Header */}
             <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
               <div>
                 <span className="text-[10px] font-bold text-brand-600 uppercase tracking-wider block">
-                  Live Assembled Dossier
+                  Your Trip Summary
                 </span>
                 <h3 className="text-lg font-black text-slate-900 flex items-center gap-2 mt-0.5">
                   {tripDossier.destination}
@@ -723,7 +749,7 @@ export const ClientPortal = () => {
                 <span className="font-bold text-brand-700 text-xs mt-0.5 block">{tripDossier.visaType}</span>
               </div>
               <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80">
-                <span className="text-[10px] font-bold text-slate-400 block uppercase">Target Dates</span>
+                <span className="text-[10px] font-bold text-slate-400 block uppercase">Travel Dates</span>
                 <span className="font-bold text-slate-900 text-xs mt-0.5 block">{tripDossier.dates}</span>
               </div>
             </div>
@@ -731,9 +757,9 @@ export const ClientPortal = () => {
             {/* Live Progress Bar */}
             <div className="mb-5">
               <div className="flex justify-between items-center text-xs font-bold text-slate-700 mb-1.5">
-                <span>Consular Clearance Readiness</span>
+                <span>Visa Readiness</span>
                 <span className={progressPercent === 100 ? "text-emerald-700" : "text-brand-600"}>
-                  {progressPercent}% Ready
+                  {progressPercent}% Complete
                 </span>
               </div>
               <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
@@ -747,7 +773,7 @@ export const ClientPortal = () => {
             {/* Dynamic Items Collected By The Agent */}
             <div className="space-y-3 mb-6">
               <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                Items Collected & Verified on the Fly:
+                Application Checklist:
               </div>
 
               {/* 1. Passport Item */}
@@ -775,7 +801,7 @@ export const ClientPortal = () => {
                     <div className="text-[11px] text-slate-500">
                       {tripDossier.passport.status === "verified"
                         ? `${tripDossier.passport.name} (${tripDossier.passport.number})`
-                        : "Waiting for agent verification"}
+                        : "Waiting for passport check"}
                     </div>
                   </div>
                 </div>
@@ -853,11 +879,11 @@ export const ClientPortal = () => {
                     {tripDossier.hotel.status === "verified" ? <Check className="w-4 h-4" /> : "3"}
                   </div>
                   <div>
-                    <div className="font-bold text-slate-900">Accommodation Proof</div>
+                    <div className="font-bold text-slate-900">Hotel Accommodation Proof</div>
                     <div className="text-[11px] text-slate-500">
                       {tripDossier.hotel.status === "verified"
                         ? `${tripDossier.hotel.name} • ${tripDossier.hotel.reference}`
-                        : "Waiting for accommodation voucher"}
+                        : "Waiting for hotel confirmation"}
                     </div>
                   </div>
                 </div>
@@ -885,8 +911,8 @@ export const ClientPortal = () => {
                 icon={<ShieldCheck className="w-4 h-4" />}
               >
                 {isDossierComplete
-                  ? "Submit Verified Application"
-                  : "Complete Chat Steps to Submit"}
+                  ? "Submit Visa Application"
+                  : "Complete Steps in Chat to Submit"}
               </Button>
 
               {isDossierComplete && (
@@ -895,7 +921,7 @@ export const ClientPortal = () => {
                   className="w-full py-2 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Eye className="w-3.5 h-3.5" />
-                  Inspect Dossier Bundle
+                  Review Application Summary
                 </button>
               )}
             </div>
@@ -905,24 +931,24 @@ export const ClientPortal = () => {
           <div className="bg-white rounded-3xl border border-slate-200 shadow-card p-5 text-xs">
             <div className="flex items-center gap-2 font-bold text-slate-900 mb-2">
               <HelpCircle className="w-4 h-4 text-brand-600" />
-              <span>Ask the Concierge in Chat:</span>
+              <span>Ask the Assistant:</span>
             </div>
             <div className="flex flex-wrap gap-1.5 text-[11px]">
               <button
                 onClick={() => handleSend("How much is the visa fee?")}
-                className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition-colors"
+                className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition-colors cursor-pointer"
               >
                 "How much is the visa fee?"
               </button>
               <button
                 onClick={() => handleSend("Do I need a yellow fever card?")}
-                className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition-colors"
+                className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition-colors cursor-pointer"
               >
                 "Do I need a yellow fever card?"
               </button>
               <button
                 onClick={() => handleSend("How long does processing take?")}
-                className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition-colors"
+                className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition-colors cursor-pointer"
               >
                 "How long does processing take?"
               </button>
@@ -931,7 +957,7 @@ export const ClientPortal = () => {
         </div>
       </div>
 
-      {/* Dossier Preview Modal */}
+      {/* Application Preview Modal */}
       {previewDossierModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl border border-slate-200 shadow-dropdown max-w-lg w-full p-6 animate-in zoom-in-95 space-y-4">
@@ -939,12 +965,12 @@ export const ClientPortal = () => {
               <div className="flex items-center gap-2">
                 <FileText className="w-5 h-5 text-brand-600" />
                 <h3 className="text-base font-bold text-slate-900">
-                  Consular Dossier Package: {tripDossier.destination}
+                  Application Summary: {tripDossier.destination}
                 </h3>
               </div>
               <button
                 onClick={() => setPreviewDossierModal(false)}
-                className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700"
+                className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -953,7 +979,7 @@ export const ClientPortal = () => {
             <div className="space-y-3 text-xs text-slate-700">
               <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
                 <div className="font-bold text-slate-900 flex justify-between">
-                  <span>1. Applicant Identity & MRZ</span>
+                  <span>1. Applicant Passport</span>
                   <span className="text-emerald-700 font-semibold">✓ Verified</span>
                 </div>
                 <div>Name: {tripDossier.passport.name}</div>
@@ -973,8 +999,8 @@ export const ClientPortal = () => {
 
               <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
                 <div className="font-bold text-slate-900 flex justify-between">
-                  <span>3. Accommodation Confirmation</span>
-                  <span className="text-emerald-700 font-semibold">✓ Certified</span>
+                  <span>3. Hotel Booking Confirmation</span>
+                  <span className="text-emerald-700 font-semibold">✓ Confirmed</span>
                 </div>
                 <div>Property: {tripDossier.hotel.name}</div>
                 <div>Location: {tripDossier.hotel.location}</div>
@@ -992,7 +1018,7 @@ export const ClientPortal = () => {
               }}
               icon={<ShieldCheck className="w-4 h-4" />}
             >
-              Submit Application to Consular Immigration
+              Submit Application
             </Button>
           </div>
         </div>
@@ -1007,10 +1033,10 @@ export const ClientPortal = () => {
             </div>
 
             <h3 className="text-xl font-black text-slate-900 mb-2">
-              Application Transmitted!
+              Application Submitted!
             </h3>
             <p className="text-xs text-slate-600 leading-relaxed mb-4">
-              Your verified documents, Emirates flight hold, and hotel reservation for <strong>{tripDossier.destination}</strong> have been packaged and transmitted to consular immigration.
+              Your verified documents, Emirates flight hold, and hotel reservation for <strong>{tripDossier.destination}</strong> have been packaged and submitted to consular immigration.
             </p>
 
             <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs mb-6 text-left space-y-1">
@@ -1040,7 +1066,7 @@ export const ClientPortal = () => {
                 className="w-full justify-center"
                 onClick={() => setSubmittedModal(false)}
               >
-                Back to Workspace
+                Back to Trip Planner
               </Button>
             </div>
           </div>
