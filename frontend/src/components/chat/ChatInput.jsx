@@ -12,9 +12,10 @@ export const ChatInput = ({ onSendMessage, loading }) => {
   };
 
   const samplePrompts = [
-    "Relocating to London next month for Bloomberg. Skilled Worker pathway.",
-    "Need to verify 28-day bank balance for UKVI maintenance threshold.",
-    "Employer provided Certificate of Sponsorship with maintenance guarantee."
+    "What documents do I need for a 2-week tourist visa to the UK?",
+    "Do I need a transit visa if connecting through Doha?",
+    "How much bank balance is recommended for a London vacation?",
+    "Can I carry 2 x 23kg bags on British Airways?"
   ];
 
   return (
@@ -23,14 +24,14 @@ export const ChatInput = ({ onSendMessage, loading }) => {
       <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
         <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 shrink-0 flex items-center gap-1">
           <Sparkles className="w-3 h-3 text-brand-600" />
-          Suggestions:
+          Common Travel Questions:
         </span>
         {samplePrompts.map((p, i) => (
           <button
             key={i}
             type="button"
             onClick={() => onSendMessage(p)}
-            className="text-left px-3 py-1 rounded-full text-xs font-medium bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-subtle transition-all shrink-0 cursor-pointer"
+            className="text-left px-3 py-1.5 rounded-full text-xs font-semibold bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-subtle transition-all shrink-0 cursor-pointer"
           >
             {p}
           </button>
@@ -41,7 +42,7 @@ export const ChatInput = ({ onSendMessage, loading }) => {
       <form onSubmit={handleSubmit} className="flex items-center gap-2">
         <input
           type="text"
-          placeholder="Type your relocation route, employer details, or questions..."
+          placeholder="Ask anything about visas, flights, hotels, or travel requirements..."
           value={text}
           onChange={(e) => setText(e.target.value)}
           disabled={loading}

@@ -9,9 +9,9 @@ export const UploadZone = ({ onUpload, selectedDocType = 'passport', onTypeChang
 
   const docTypes = [
     { id: 'passport', label: 'International Passport', hint: 'Bio page with photo & validity' },
-    { id: 'cos', label: 'Certificate of Sponsorship', hint: 'Issued by Bloomberg LP' },
-    { id: 'bank_statement', label: '28-Day Bank Statement', hint: 'Personal savings / salary proof' },
-    { id: 'tb_test', label: 'IOM TB Certificate', hint: 'IOM Lagos Medical Clearance' }
+    { id: 'flight_ticket', label: 'Flight Booking / Ticket', hint: 'Confirmed return itinerary' },
+    { id: 'hotel_booking', label: 'Hotel / Accommodation Proof', hint: 'Booking reservation confirmation' },
+    { id: 'bank_statement', label: 'Bank Statement (3 Months)', hint: 'Proof of travel subsistence funds' }
   ];
 
   const handleDrag = (e) => {
@@ -47,27 +47,25 @@ export const UploadZone = ({ onUpload, selectedDocType = 'passport', onTypeChang
     }
   };
 
-  const currentHint = docTypes.find((d) => d.id === selectedDocType)?.hint || '';
-
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-card p-5 mb-6">
-      <div className="flex items-center justify-between mb-3">
+    <div className="bg-white rounded-3xl border border-slate-200 shadow-card p-6 mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-sm font-bold text-slate-900">Upload Supporting Document</h3>
-          <p className="text-xs text-slate-500">Instant AI verification against UKVI requirements</p>
+          <h3 className="text-base font-bold text-slate-900">Upload Trip Documents</h3>
+          <p className="text-xs text-slate-500">Scan for validity, return dates & embassy compliance</p>
         </div>
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-brand-50 text-brand-700 border border-brand-200">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-brand-50 text-brand-700 border border-brand-200">
           <ShieldCheck className="w-3.5 h-3.5 text-brand-600" />
-          UKVI Compliant
+          Instant Check
         </span>
       </div>
 
       {/* Select Document Type */}
-      <div className="mb-3">
-        <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-2">
-          Select Document Type to Upload:
+      <div className="mb-4">
+        <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
+          Select Document Type:
         </label>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-2.5">
           {docTypes.map((dt) => {
             const isSelected = selectedDocType === dt.id;
             return (
@@ -76,9 +74,9 @@ export const UploadZone = ({ onUpload, selectedDocType = 'passport', onTypeChang
                 type="button"
                 onClick={() => onTypeChange(dt.id)}
                 className={
-                  'text-left p-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ' +
+                  'text-left p-3 rounded-2xl border text-xs font-bold transition-all cursor-pointer ' +
                   (isSelected
-                    ? 'bg-brand-50 text-brand-800 border-brand-300 ring-1 ring-brand-400/30'
+                    ? 'bg-brand-50 text-brand-800 border-brand-300 ring-1 ring-brand-400/30 shadow-subtle'
                     : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200')
                 }
               >
@@ -90,14 +88,14 @@ export const UploadZone = ({ onUpload, selectedDocType = 'passport', onTypeChang
         </div>
       </div>
 
-      {/* Drag and Drop Zone */}
+      {/* Drop Zone */}
       <div
         onDragEnter={handleDrag}
         onDragLeave={handleDrag}
         onDragOver={handleDrag}
         onDrop={handleDrop}
         className={
-          'relative border-2 border-dashed rounded-xl p-6 text-center transition-all cursor-pointer ' +
+          'relative border-2 border-dashed rounded-2xl p-6 text-center transition-all cursor-pointer ' +
           (dragActive
             ? 'border-brand-500 bg-brand-50/50'
             : 'border-slate-300 hover:border-slate-400 bg-slate-50/60')
@@ -115,21 +113,21 @@ export const UploadZone = ({ onUpload, selectedDocType = 'passport', onTypeChang
           {uploading ? (
             <Loader2 className="w-8 h-8 text-brand-600 animate-spin" />
           ) : (
-            <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 shadow-subtle flex items-center justify-center text-slate-600">
-              <UploadCloud className="w-5 h-5 text-brand-600" />
+            <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 shadow-subtle flex items-center justify-center text-slate-600">
+              <UploadCloud className="w-6 h-6 text-brand-600" />
             </div>
           )}
 
           <div>
-            <div className="text-sm font-semibold text-slate-800">
+            <div className="text-sm font-bold text-slate-800">
               {uploading
-                ? 'Scanning document & validating compliance...'
+                ? 'Scanning document details & checking validity...'
                 : file
                 ? file.name
-                : 'Drop document here or click to browse'}
+                : 'Upload document or drag and drop'}
             </div>
             <div className="text-xs text-slate-500 mt-0.5">
-              Supports PDF, PNG, JPG up to 15MB
+              PDF, PNG, JPG up to 15MB
             </div>
           </div>
         </div>
@@ -138,7 +136,7 @@ export const UploadZone = ({ onUpload, selectedDocType = 'passport', onTypeChang
       {file && !uploading && (
         <div className="mt-4 flex items-center justify-end gap-2">
           <Button variant="secondary" size="sm" onClick={() => setFile(null)}>
-            Remove
+            Cancel
           </Button>
           <Button
             variant="primary"
@@ -146,7 +144,7 @@ export const UploadZone = ({ onUpload, selectedDocType = 'passport', onTypeChang
             onClick={handleStartUpload}
             icon={<FileText className="w-4 h-4" />}
           >
-            Scan & Verify
+            Verify Document
           </Button>
         </div>
       )}

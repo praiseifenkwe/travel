@@ -1,49 +1,49 @@
 import React from 'react';
-import { Calendar, CheckCircle2, Clock, MapPin, Building2, Plane, Sparkles } from 'lucide-react';
+import { Calendar, CheckCircle2, Clock, MapPin, Plane, Sparkles, Luggage, Hotel, ShieldCheck } from 'lucide-react';
 
 export const RelocationTimeline = () => {
   const steps = [
     {
-      title: 'Document OCR & Rules Engine Check',
-      desc: 'Verify Passport, CoS, Bank Statement & TB Certificate',
+      title: 'Trip Planning & Entry Rules',
+      desc: 'Check UK standard visitor entry guidelines & return flight options',
       date: 'Oct 23, 2026',
       status: 'completed'
     },
     {
-      title: 'Agency Staff Consular Sign-Off',
-      desc: 'Legal caseworker approval & Section 320 discrepancy clearance',
+      title: 'Travel Documents Vault Verification',
+      desc: 'Validate passport validity (>6 mos), hotel booking & proof of funds',
       date: 'Oct 24, 2026',
       status: 'current'
     },
     {
-      title: 'TLScontact Biometrics Appointment',
-      desc: 'Enrol fingerprints & facial bio at Victoria Island, Lagos',
+      title: 'Visa Biometrics & Document Drop-off',
+      desc: 'Attend appointment at TLScontact Victoria Island, Lagos',
       date: 'Nov 02, 2026',
       status: 'upcoming'
     },
     {
-      title: 'UKVI Electronic Decision Issued',
-      desc: '3-5 business days expedited priority visa issuance',
-      date: 'Nov 07, 2026',
+      title: 'Visa Decision & Passport Collection',
+      desc: 'Collect passport with approved visitor vignette sticker',
+      date: 'Nov 08, 2026',
       status: 'upcoming'
     },
     {
-      title: 'Corporate Flight Departure',
-      desc: 'LOS -> LHR British Airways BA074 (Corporate Relocation Tier)',
+      title: 'Flight Departure & Vacation Starts',
+      desc: 'LOS -> LHR British Airways BA074 (2 x 23kg baggage included)',
       date: 'Nov 14, 2026',
       status: 'upcoming'
     }
   ];
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-card p-5 mb-6">
-      <div className="flex items-center justify-between mb-4">
+    <div className="bg-white rounded-3xl border border-slate-200 shadow-card p-6 mb-6">
+      <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
         <div>
-          <h3 className="text-sm font-bold text-slate-900">30-Day Relocation Roadmap</h3>
-          <p className="text-xs text-slate-500">Synchronized across UKVI consular dates and flight holds</p>
+          <h3 className="text-base font-bold text-slate-900">Trip Preparation Roadmap</h3>
+          <p className="text-xs text-slate-500">Key dates from document preparation to departure</p>
         </div>
-        <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-brand-50 text-brand-700 border border-brand-200">
-          Schedule On Track
+        <span className="text-xs font-bold px-3 py-1 rounded-full bg-brand-50 text-brand-700 border border-brand-200">
+          Trip On Schedule
         </span>
       </div>
 
