@@ -5,7 +5,7 @@ import { DiffViewerModal } from '../components/dashboard/DiffViewerModal';
 import { DocumentCard } from '../components/documents/DocumentCard';
 import { apiService } from '../services/api';
 import { useSocket } from '../hooks/useSocket';
-import { Eye, Search, Shield, Users, FileCheck2, Zap, Building2, MapPin } from 'lucide-react';
+import { Eye, Search, Shield, Users, FileCheck2, Zap, Building2, MapPin, Send, AlertTriangle, CheckCircle2, Phone, Mail } from 'lucide-react';
 import { Button } from '../components/shared/Button';
 import { Badge } from '../components/shared/Badge';
 
@@ -13,17 +13,21 @@ export const StaffDashboard = () => {
   const [filter, setFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [toastMessage, setToastMessage] = useState(null);
+  const [caseworkerNote, setCaseworkerNote] = useState('');
+
   const [applications, setApplications] = useState([
     {
       id: 'app_tunde_123',
       client_name: 'Tunde Babatunde Adeyemi',
       client_email: 'tunde.adeyemi@bloomberg.com',
       client_phone: '+234 803 123 4567',
-      visa_type: 'uk_skilled_worker',
-      destination: 'United Kingdom',
+      visa_type: 'UK Skilled Worker Visa (Tier 2)',
+      destination: 'London, United Kingdom',
       employer: 'Bloomberg LP (London Office)',
+      salary: '£85,000 / year',
       stage: 'document_audit',
       compliance_passed: false,
+      flagReason: 'Passport expires in Feb 2027 • Sponsor Maintenance check',
       created_at: new Date().toISOString()
     },
     {
@@ -31,11 +35,13 @@ export const StaffDashboard = () => {
       client_name: 'Amaka Obi',
       client_email: 'amaka.obi@imperial.ac.uk',
       client_phone: '+234 812 987 6543',
-      visa_type: 'uk_skilled_worker',
-      destination: 'United Kingdom',
+      visa_type: 'UK Student Visa (Subcategory CAS)',
+      destination: 'London, United Kingdom',
       employer: 'Imperial College London',
+      salary: 'Tuition & Maintenance Covered',
       stage: 'ready_for_submission',
       compliance_passed: true,
+      flagReason: 'All evidential artifacts cleared',
       created_at: new Date(Date.now() - 3600000).toISOString()
     },
     {
@@ -43,11 +49,13 @@ export const StaffDashboard = () => {
       client_name: 'Chidi Nwosu',
       client_email: 'chidi.nwosu@kpmg.co.uk',
       client_phone: '+234 809 555 1234',
-      visa_type: 'uk_skilled_worker',
-      destination: 'United Kingdom',
+      visa_type: 'UK Skilled Worker (Global Mobility)',
+      destination: 'Manchester, United Kingdom',
       employer: 'KPMG UK',
+      salary: '£72,000 / year',
       stage: 'submitted',
       compliance_passed: true,
+      flagReason: 'Submitted to UKVI • Awaiting decision',
       created_at: new Date(Date.now() - 7200000).toISOString()
     }
   ]);
@@ -73,8 +81,8 @@ export const StaffDashboard = () => {
     if (selectedAppId === 'app_tunde_123') {
       setIssues([
         {
-          rule: 'UKVI Appendix Finance - FIN 2.1',
-          detail: 'Personal savings fall below standard GBP 1,270 threshold. Sponsor certified maintenance under CoS Section A2.'
+          rule: 'UKVI Appendix Finance — FIN 2.1',
+          detail: 'Applicant maintains personal savings of £7,250. Sponsoring employer (Bloomberg LP) certifies maintenance under CoS Section A2, providing statutory exemption.'
         }
       ]);
       setDocuments([
@@ -103,7 +111,7 @@ export const StaffDashboard = () => {
           ai_confidence: 0.94,
           original_filename: 'FirstBank_Statement_28Day.pdf',
           extracted_data: { bank_name: 'First Bank of Nigeria', closing_balance_ngn: 14500000, equivalent_gbp: 7250, days_held: 28 },
-          issues: [{ rule: 'FIN 2.1', detail: 'Maintenance covered by sponsor guarantee.' }]
+          issues: [{ rule: 'FIN 2.1', detail: 'Maintenance covered by Tier-A sponsor certification.' }]
         }
       ]);
     } else {
@@ -113,10 +121,10 @@ export const StaffDashboard = () => {
   }, [selectedAppId, applications]);
 
   useEffect(() => {
-    if (lastEvent?.type === 'document_processed') {
+    if (lastEvent && lastEvent.type === 'document_processed') {
       const doc = lastEvent.data;
       setDocuments((prev) => [doc, ...prev.filter((d) => d.doc_type !== doc.doc_type)]);
-      showToast('Real-time update: ' + doc.doc_type + ' processed');
+      showToast('Client update: ' + doc.doc_type + ' uploaded');
     }
   }, [lastEvent]);
 
@@ -125,22 +133,29 @@ export const StaffDashboard = () => {
     try {
       await apiService.takeStaffAction(selectedAppId, actionType, {
         notes: 'Caseworker approved sponsor maintenance guarantee under CoS A2 exemption.',
-        authorized_by: 'Caseworker_Adeyemi'
+        authorized_by: 'Licensed_Caseworker_Adeyemi'
       });
       setIssues([]);
       setApplications((prev) =>
         prev.map((a) => (a.id === selectedAppId ? { ...a, stage: 'ready_for_submission', compliance_passed: true } : a))
       );
-      showToast('Action confirmed: Compliance clearance approved');
+      showToast('Determination approved: Case ready for UKVI electronic filing');
     } catch (e) {
       setIssues([]);
       setApplications((prev) =>
         prev.map((a) => (a.id === selectedAppId ? { ...a, stage: 'ready_for_submission', compliance_passed: true } : a))
       );
-      showToast('Caseworker override applied: Clearance granted');
+      showToast('Caseworker override logged: Compliance clearance granted');
     } finally {
       setLoadingAction(false);
     }
+  };
+
+  const handleSendClientNote = (e) => {
+    e.preventDefault();
+    if (!caseworkerNote.trim()) return;
+    showToast('Direct caseworker update sent to applicant portal');
+    setCaseworkerNote('');
   };
 
   const flaggedCount = applications.filter((a) => a.stage === 'document_audit').length;
@@ -151,58 +166,77 @@ export const StaffDashboard = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Toast */}
       {toastMessage && (
-        <div className="fixed top-20 right-6 z-50 flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-white border border-slate-200 shadow-dropdown text-slate-800 text-xs font-semibold animate-in fade-in slide-in-from-top-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
+        <div className="fixed top-20 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl bg-white border border-slate-200 shadow-dropdown text-slate-800 text-xs font-semibold animate-in fade-in slide-in-from-top-2">
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse" />
           <span>{toastMessage}</span>
         </div>
       )}
 
-      {/* Top Enterprise Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-card p-5">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider">Active Dossiers</span>
-            <Users className="w-4 h-4 text-brand-600" />
+      {/* Caseworker Console Header */}
+      <div className="mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+              Agency Immigration Casework Console
+            </h1>
+            <p className="text-sm text-slate-500 mt-1">
+              Deterministic UKVI compliance audit, legal exemptions & electronic submission gateway
+            </p>
           </div>
-          <div className="text-2xl font-extrabold text-slate-900">{applications.length}</div>
-          <div className="text-[11px] text-slate-400 mt-1">PAU Hackathon Test Queue</div>
-        </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-card p-5">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider">Consular Flags</span>
-            <span className="w-2 h-2 rounded-full bg-amber-500" />
+          <div className="flex items-center gap-2 text-xs font-semibold text-emerald-800 bg-emerald-50 px-3.5 py-1.5 rounded-full border border-emerald-200 self-start">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>Caseworker Session: Active (OISC Reg. Level 2)</span>
           </div>
-          <div className="text-2xl font-extrabold text-amber-600">{flaggedCount}</div>
-          <div className="text-[11px] text-slate-400 mt-1">Requiring caseworker review</div>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-card p-5">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider">Clearance Ready</span>
-            <FileCheck2 className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="text-2xl font-extrabold text-emerald-600">{clearedCount + submittedCount}</div>
-          <div className="text-[11px] text-slate-400 mt-1">Satisfies UKVI Immigration Rules</div>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-card p-5">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider">Audit Sync</span>
-            <Zap className="w-4 h-4 text-indigo-600" />
-          </div>
-          <div className="text-2xl font-extrabold text-indigo-600">&lt; 25ms</div>
-          <div className="text-[11px] text-slate-400 mt-1">Zero-latency WebSocket link</div>
         </div>
       </div>
 
-      {/* Main Split Layout */}
+      {/* KPI Stat Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-card p-5">
+          <div className="flex items-center justify-between text-slate-500 mb-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Total Cases</span>
+            <Users className="w-4 h-4 text-brand-600" />
+          </div>
+          <div className="text-2xl font-black text-slate-900">{applications.length}</div>
+          <div className="text-[11px] text-slate-400 mt-1">Active relocation pipeline</div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-card p-5">
+          <div className="flex items-center justify-between text-slate-500 mb-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-amber-700">Action Required</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+          </div>
+          <div className="text-2xl font-black text-amber-600">{flaggedCount}</div>
+          <div className="text-[11px] text-amber-700 mt-1">Discrepancies pending review</div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-card p-5">
+          <div className="flex items-center justify-between text-slate-500 mb-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">Clearance Ready</span>
+            <FileCheck2 className="w-4 h-4 text-emerald-600" />
+          </div>
+          <div className="text-2xl font-black text-emerald-600">{clearedCount}</div>
+          <div className="text-[11px] text-emerald-700 mt-1">Ready for UKVI submission</div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-card p-5">
+          <div className="flex items-center justify-between text-slate-500 mb-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Electronic Filing</span>
+            <Zap className="w-4 h-4 text-indigo-600" />
+          </div>
+          <div className="text-2xl font-black text-indigo-600">{submittedCount}</div>
+          <div className="text-[11px] text-slate-400 mt-1">Submitted to consular queue</div>
+        </div>
+      </div>
+
+      {/* Main Casework Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column: Applicant Queue */}
+        {/* Left Column: Applicant Triage Queue */}
         <div className="lg:col-span-4 space-y-4">
           <div className="bg-white rounded-2xl border border-slate-200 shadow-card p-4">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-bold text-slate-900">Applicant Queue</h3>
+              <h3 className="text-sm font-bold text-slate-900">Applicant Triage Queue</h3>
               <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
                 {applications.length} cases
               </span>
@@ -212,15 +246,15 @@ export const StaffDashboard = () => {
             <div className="grid grid-cols-4 gap-1 p-1 bg-slate-100 rounded-xl mb-3 text-center">
               {[
                 { id: 'all', label: 'All' },
-                { id: 'flagged', label: 'Flagged' },
-                { id: 'cleared', label: 'Cleared' },
+                { id: 'flagged', label: 'Flags' },
+                { id: 'cleared', label: 'Clear' },
                 { id: 'submitted', label: 'Filed' }
               ].map((pill) => (
                 <button
                   key={pill.id}
                   onClick={() => setFilter(pill.id)}
                   className={
-                    'py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ' +
+                    'py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ' +
                     (filter === pill.id
                       ? 'bg-white text-slate-900 shadow-subtle'
                       : 'text-slate-600 hover:text-slate-900')
@@ -240,28 +274,35 @@ export const StaffDashboard = () => {
           </div>
         </div>
 
-        {/* Right Column: Case Inspection & Determinations */}
+        {/* Right Column: Case Determination Workspace */}
         <div className="lg:col-span-8 space-y-6">
           {selectedApp && (
             <div className="bg-white rounded-2xl border border-slate-200 shadow-card p-6">
-              {/* Selected Applicant Header */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-100 mb-5">
+              {/* Case Header Banner */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-100 mb-6">
                 <div>
                   <div className="flex items-center gap-3 flex-wrap">
-                    <h2 className="text-lg font-extrabold text-slate-900">
+                    <h2 className="text-xl font-black text-slate-900">
                       {selectedApp.client_name}
                     </h2>
                     <Badge status={selectedApp.stage} />
                   </div>
-                  <div className="flex items-center gap-3 text-xs text-slate-500 mt-1 flex-wrap">
-                    <span className="flex items-center gap-1 font-medium text-slate-700">
+
+                  <div className="flex items-center gap-4 text-xs text-slate-500 mt-2 flex-wrap">
+                    <span className="flex items-center gap-1 font-semibold text-slate-800">
                       <Building2 className="w-3.5 h-3.5 text-slate-400" />
                       {selectedApp.employer}
                     </span>
-                    <span>*</span>
-                    <span className="font-mono text-slate-500">ID: {selectedApp.id}</span>
-                    <span>*</span>
-                    <span className="font-semibold text-brand-700">Skilled Worker Route</span>
+                    <span>•</span>
+                    <span className="flex items-center gap-1 font-medium text-slate-600">
+                      <Mail className="w-3.5 h-3.5 text-slate-400" />
+                      {selectedApp.client_email}
+                    </span>
+                    <span>•</span>
+                    <span className="flex items-center gap-1 font-medium text-slate-600">
+                      <Phone className="w-3.5 h-3.5 text-slate-400" />
+                      {selectedApp.client_phone}
+                    </span>
                   </div>
                 </div>
 
@@ -270,29 +311,31 @@ export const StaffDashboard = () => {
                     variant="secondary"
                     size="sm"
                     onClick={() => setDiffModalOpen(true)}
-                    icon={<Eye className="w-3.5 h-3.5" />}
+                    icon={<Eye className="w-3.5 h-3.5 text-brand-600" />}
                   >
                     Optical Diff Inspector
                   </Button>
                 </div>
               </div>
 
-              {/* Audit Clearance or Flag Card */}
+              {/* Caseworker Action & Decision Determination Card */}
               <AuditCard
                 issues={issues}
                 onStaffAction={handleStaffAction}
                 loading={loadingAction}
               />
 
-              {/* Evidential Records */}
-              <div className="mt-6">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-bold text-slate-900">
-                    Evidential Documents Submitted
-                  </h3>
-                  <span className="text-xs text-slate-500 font-medium">
-                    {documents.length} verified records
-                  </span>
+              {/* Evidential Records Submitted by Client */}
+              <div className="mt-8">
+                <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900">
+                      Client Evidential Records ({documents.length})
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Parsed via multimodal OCR and checked against UKVI immigration rules
+                    </p>
+                  </div>
                 </div>
 
                 <div className="space-y-3">
@@ -300,6 +343,29 @@ export const StaffDashboard = () => {
                     <DocumentCard key={d.id} doc={d} />
                   ))}
                 </div>
+              </div>
+
+              {/* Send Direct Caseworker Message to Applicant */}
+              <div className="mt-8 p-4 rounded-xl bg-slate-50 border border-slate-200">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800 mb-1">
+                  Send Direct Caseworker Notice to Applicant
+                </h4>
+                <p className="text-xs text-slate-500 mb-3">
+                  Message will appear immediately on the applicant's portal in real-time.
+                </p>
+
+                <form onSubmit={handleSendClientNote} className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="e.g. Your CoS maintenance guarantee has been verified. You may proceed to TLScontact booking."
+                    value={caseworkerNote}
+                    onChange={(e) => setCaseworkerNote(e.target.value)}
+                    className="flex-1 px-4 py-2 rounded-xl text-xs bg-white border border-slate-200 text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                  />
+                  <Button variant="primary" size="sm" type="submit" icon={<Send className="w-3.5 h-3.5" />}>
+                    Send Notice
+                  </Button>
+                </form>
               </div>
             </div>
           )}

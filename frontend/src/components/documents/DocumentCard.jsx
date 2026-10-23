@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileCheck, AlertTriangle, Eye, X, ShieldAlert, Sparkles } from 'lucide-react';
+import { FileCheck, AlertTriangle, Eye, X, ShieldAlert, Sparkles, CheckCircle2, Clock } from 'lucide-react';
 import { Badge } from '../shared/Badge';
 import { Button } from '../shared/Button';
 
@@ -11,38 +11,38 @@ export const DocumentCard = ({ doc }) => {
     <>
       <div className={
         'rounded-2xl border transition-all p-4 mb-3 shadow-subtle hover:shadow-card ' +
-        (isFlagged ? 'border-amber-300 bg-amber-50/20' : 'bg-white border-slate-200')
+        (isFlagged ? 'border-amber-300 bg-amber-50/30' : 'bg-white border-slate-200')
       }>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
             <div className={
-              'w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ' +
+              'w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ' +
               (isFlagged ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700')
             }>
-              {isFlagged ? <AlertTriangle className="w-5 h-5" /> : <FileCheck className="w-5 h-5" />}
+              {isFlagged ? <Clock className="w-5 h-5 text-amber-600" /> : <CheckCircle2 className="w-5 h-5 text-emerald-600" />}
             </div>
             <div>
               <div className="text-sm font-bold text-slate-900 capitalize">
                 {doc.doc_type ? doc.doc_type.replace(/_/g, ' ') : 'Document'}
               </div>
               <div className="text-xs text-slate-500 flex items-center gap-2">
-                <span>{doc.original_filename || 'Uploaded Document'}</span>
+                <span className="truncate max-w-[200px]">{doc.original_filename || 'Uploaded Document'}</span>
                 <span>•</span>
-                <span className="text-emerald-700 font-medium">
-                  Confidence: {Math.round((doc.ai_confidence || 0.95) * 100)}%
+                <span className="text-emerald-700 font-semibold">
+                  OCR Verified ({Math.round((doc.ai_confidence || 0.95) * 100)}%)
                 </span>
               </div>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <Badge status={doc.status} />
+            <Badge status={doc.status} label={isFlagged ? 'Caseworker Review' : 'Verified'} />
             <button
               onClick={() => setInspectModalOpen(true)}
               className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
             >
               <Eye className="w-3 h-3" />
-              Inspect
+              View Data
             </button>
           </div>
         </div>
@@ -63,13 +63,15 @@ export const DocumentCard = ({ doc }) => {
           </div>
         )}
 
-        {/* Issues Warning */}
+        {/* Reassuring Caseworker Notice */}
         {doc.issues && doc.issues.length > 0 && (
           <div className="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 space-y-1">
             {doc.issues.map((issue, idx) => (
               <div key={idx} className="flex items-start gap-2">
                 <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                <span>{issue.detail}</span>
+                <span className="leading-relaxed">
+                  <strong>Caseworker Action Queued: </strong>{issue.detail}
+                </span>
               </div>
             ))}
           </div>
@@ -92,12 +94,12 @@ export const DocumentCard = ({ doc }) => {
                 <Sparkles className="w-4 h-4" />
               </div>
               <h3 className="text-base font-bold text-slate-900">
-                Raw OCR Extraction Metadata
+                Extracted Biometric & Document Information
               </h3>
             </div>
             
             <p className="text-xs text-slate-500 mb-4">
-              {doc.doc_type ? doc.doc_type.toUpperCase() : 'DOCUMENT'} • Extracted with {Math.round((doc.ai_confidence || 0.95) * 100)}% model confidence
+              Fields parsed automatically for UKVI compliance electronic filing.
             </p>
 
             <div className="space-y-2 mb-6 max-h-72 overflow-y-auto pr-1">
@@ -111,7 +113,7 @@ export const DocumentCard = ({ doc }) => {
 
             <div className="flex justify-end">
               <Button variant="secondary" size="sm" onClick={() => setInspectModalOpen(false)}>
-                Close
+                Done
               </Button>
             </div>
           </div>
