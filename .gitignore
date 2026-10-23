@@ -31,3 +31,5 @@ Thumbs.db
 .vscode/
 .idea/
 *.log
+backend/chroma_storage/
+chroma_storage/

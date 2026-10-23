@@ -1,68 +1,48 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from app.models.schemas import ChatRequest, ChatResponse
-from app.models.database import get_db, Application, ChatMessage
-from app.services.chat_service import process_chat_message
-from app.core.socket_manager import sio
+"""
+chat.py  —  POST /api/chat
+──────────────────────────
+Conversational Q&A endpoint.
+Retrieves relevant policy context from ChromaDB, then calls the LLM
+to answer the user's question in context.
+"""
+
+import uuid
+from fastapi import APIRouter, HTTPException
+
+from app.core.schemas import ChatRequest, ChatResponse
+from app.services.rag_service import retrieve_context
+from app.services.llm_service import chat_completion, build_rag_chat_prompt
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
+
 @router.post("", response_model=ChatResponse)
-async def handle_chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
-    app_id, reply, intent, checklist, stage = await process_chat_message(
-        message=request.message,
-        application_id=request.application_id
+async def handle_chat(request: ChatRequest):
+    session_id = request.session_id or str(uuid.uuid4())
+
+    # 1. Retrieve relevant policy chunks for the user's query
+    rag_context = await retrieve_context(query=request.message)
+
+    # 2. Build RAG-enriched prompt
+    system_prompt, user_msg = await build_rag_chat_prompt(
+        rag_context=rag_context,
+        user_message=request.message,
     )
-    
-    # Check or create application record
-    result = await db.execute(select(Application).where(Application.id == app_id))
-    app_record = result.scalar_one_or_none()
-    
-    if not app_record:
-        app_record = Application(
-            id=app_id,
-            client_name=intent.get("client_name") or "Tunde Adeyemi",
-            client_email="tunde.adeyemi@bloomberg.com",
-            visa_type=intent.get("visa_type", "uk_skilled_worker"),
-            destination=intent.get("destination", "United Kingdom"),
-            employer=intent.get("employer", "Bloomberg LP"),
-            travel_timeline=intent.get("timeline", "next month"),
-            stage=stage,
-            extracted_profile=intent
+
+    # 3. LLM completion
+    try:
+        result = await chat_completion(
+            system_prompt=system_prompt,
+            user_message=user_msg,
+            json_mode=True,
         )
-        db.add(app_record)
-        
-    # Save user message
-    user_msg = ChatMessage(
-        application_id=app_id,
-        role="user",
-        content=request.message
-    )
-    # Save assistant reply
-    bot_msg = ChatMessage(
-        application_id=app_id,
-        role="assistant",
-        content=reply,
-        metadata_json={"intent": intent, "checklist": checklist}
-    )
-    db.add(user_msg)
-    db.add(bot_msg)
-    await db.commit()
-    
-    # Emit websocket notification to staff room
-    await sio.emit("staff_new_intake", {
-        "application_id": app_id,
-        "client_name": app_record.client_name,
-        "destination": app_record.destination,
-        "employer": app_record.employer,
-        "stage": app_record.stage
-    }, room="staff_room")
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"LLM unavailable: {str(e)}")
 
     return ChatResponse(
-        application_id=app_id,
-        reply=reply,
-        extracted_intent=intent,
-        checklist=checklist,
-        stage=stage
+        session_id=session_id,
+        reply=result.get("reply", "I'm sorry, I couldn't process that request."),
+        sources=result.get("sources", []),
+        extracted_intent=result.get("extracted_intent", {}),
+        stage=result.get("stage", "intake"),
     )
