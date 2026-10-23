@@ -1,5 +1,4 @@
 import React from 'react';
-import { Bot, User } from 'lucide-react';
 
 export const MessageBubble = ({ message }) => {
   const isBot = message.role === 'assistant';
@@ -8,37 +7,37 @@ export const MessageBubble = ({ message }) => {
     <div style={{
       display: 'flex',
       gap: 12,
-      marginBottom: 16,
+      marginBottom: 14,
       flexDirection: isBot ? 'row' : 'row-reverse'
     }}>
-      {/* Avatar */}
+      {/* Subtle Avatar */}
       <div style={{
-        width: 32,
-        height: 32,
-        borderRadius: 8,
+        width: 26,
+        height: 26,
+        borderRadius: 6,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: isBot 
-          ? 'linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%)' 
-          : 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
-        flexShrink: 0,
-        boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+        background: isBot ? '#1c1f2e' : '#2563eb',
+        border: '1px solid var(--border-medium)',
+        color: '#fff',
+        fontSize: '0.7rem',
+        fontWeight: 600,
+        flexShrink: 0
       }}>
-        {isBot ? <Bot size={18} color="#fff" /> : <User size={18} color="#fff" />}
+        {isBot ? 'AI' : 'YOU'}
       </div>
 
-      {/* Bubble Content */}
+      {/* Bubble */}
       <div style={{
-        maxWidth: '80%',
-        padding: '14px 18px',
-        borderRadius: 14,
-        background: isBot ? 'rgba(30, 41, 59, 0.7)' : 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)',
-        border: isBot ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid rgba(99, 102, 241, 0.4)',
-        color: '#f8fafc',
-        fontSize: '0.92rem',
-        lineHeight: 1.6,
-        boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+        maxWidth: '82%',
+        padding: '10px 14px',
+        borderRadius: 8,
+        background: isBot ? 'var(--bg-surface-elevated)' : '#1e3a8a',
+        border: isBot ? '1px solid var(--border-subtle)' : '1px solid rgba(59, 130, 246, 0.4)',
+        color: '#f1f3f9',
+        fontSize: '0.86rem',
+        lineHeight: 1.55
       }}>
         {message.content}
       </div>

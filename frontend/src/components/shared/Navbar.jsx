@@ -1,119 +1,103 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Globe, Shield, User, Sparkles, Layers, FileCheck } from 'lucide-react';
+import { Shield, User, SplitSquareVertical, FileCheck2, ArrowUpRight } from 'lucide-react';
 import { DossierModal } from './DossierModal';
 
 export const Navbar = ({ isConnected }) => {
   const location = useLocation();
   const [dossierOpen, setDossierOpen] = useState(false);
 
+  const navLinks = [
+    { path: '/client', label: 'Client Intake', icon: <User size={14} /> },
+    { path: '/dashboard', label: 'Agency Console', icon: <Shield size={14} /> },
+    { path: '/demo', label: 'Split View', icon: <SplitSquareVertical size={14} /> }
+  ];
+
   return (
     <>
       <header style={{
         borderBottom: '1px solid var(--border-subtle)',
-        background: 'rgba(7, 10, 19, 0.88)',
-        backdropFilter: 'blur(22px)',
+        background: '#0a0b10',
         position: 'sticky',
         top: 0,
         zIndex: 100
       }}>
         <div style={{
-          maxWidth: 1440,
+          maxWidth: 1400,
           margin: '0 auto',
-          padding: '14px 24px',
+          padding: '0 24px',
+          height: 56,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between'
         }}>
           {/* Brand */}
-          <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none' }}>
-            <div style={{
-              width: 38,
-              height: 38,
-              borderRadius: 10,
-              background: 'linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 0 16px rgba(99, 102, 241, 0.4)'
-            }}>
-              <Globe size={22} color="#ffffff" />
-            </div>
-            <div>
-              <div style={{ fontWeight: 800, fontSize: '1.15rem', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span className="text-gradient">TravelForge</span>
-                <span style={{ fontSize: '0.65rem', padding: '2px 6px', background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', borderRadius: 4, border: '1px solid rgba(99, 102, 241, 0.3)' }}>AI-OS</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+            <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+              <div style={{
+                width: 28,
+                height: 28,
+                borderRadius: 6,
+                background: '#1d2232',
+                border: '1px solid var(--border-medium)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fff',
+                fontSize: '0.8rem',
+                fontWeight: 700
+              }}>
+                TF
               </div>
-              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Immigration & Relocation Infrastructure</div>
-            </div>
-          </Link>
-
-          {/* Navigation Tabs */}
-          <nav style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(15, 23, 42, 0.65)', padding: 4, borderRadius: 12, border: '1px solid var(--border-subtle)' }}>
-            <Link
-              to="/client"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '8px 16px',
-                borderRadius: 8,
-                fontSize: '0.85rem',
-                fontWeight: 600,
-                textDecoration: 'none',
-                color: location.pathname === '/client' ? '#ffffff' : 'var(--text-secondary)',
-                background: location.pathname === '/client' ? 'linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)' : 'transparent',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              <User size={16} />
-              Client Portal
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontWeight: 600, fontSize: '0.95rem', color: '#fff', letterSpacing: '-0.02em' }}>
+                  TravelForge
+                </span>
+                <span style={{
+                  fontSize: '0.68rem',
+                  padding: '1px 6px',
+                  background: 'var(--bg-subtle)',
+                  color: 'var(--text-muted)',
+                  borderRadius: 4,
+                  border: '1px solid var(--border-subtle)'
+                }}>
+                  v1.0
+                </span>
+              </div>
             </Link>
 
-            <Link
-              to="/dashboard"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '8px 16px',
-                borderRadius: 8,
-                fontSize: '0.85rem',
-                fontWeight: 600,
-                textDecoration: 'none',
-                color: location.pathname === '/dashboard' ? '#ffffff' : 'var(--text-secondary)',
-                background: location.pathname === '/dashboard' ? 'linear-gradient(135deg, #059669 0%, #06b6d4 100%)' : 'transparent',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              <Shield size={16} />
-              Agency Control
-            </Link>
+            {/* Navigation Segmented Control */}
+            <nav style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              {navLinks.map((item) => {
+                const isActive = location.pathname === item.path;
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '6px 12px',
+                      borderRadius: 6,
+                      fontSize: '0.82rem',
+                      fontWeight: isActive ? 600 : 400,
+                      textDecoration: 'none',
+                      color: isActive ? '#ffffff' : 'var(--text-secondary)',
+                      background: isActive ? 'var(--bg-surface-elevated)' : 'transparent',
+                      border: isActive ? '1px solid var(--border-medium)' : '1px solid transparent',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    {item.icon}
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
 
-            <Link
-              to="/demo"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '8px 16px',
-                borderRadius: 8,
-                fontSize: '0.85rem',
-                fontWeight: 700,
-                textDecoration: 'none',
-                color: '#ffffff',
-                background: location.pathname === '/demo' ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' : 'rgba(245, 158, 11, 0.15)',
-                border: '1px solid rgba(245, 158, 11, 0.35)',
-                boxShadow: location.pathname === '/demo' ? '0 0 16px rgba(245, 158, 11, 0.4)' : 'none',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              <Layers size={15} color="#fbbf24" />
-              Dual View
-            </Link>
-          </nav>
-
-          {/* Quick Actions & Live Indicator */}
+          {/* Right Header Actions */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <button
               onClick={() => setDossierOpen(true)}
@@ -121,45 +105,44 @@ export const Navbar = ({ isConnected }) => {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 6,
-                padding: '7px 14px',
-                borderRadius: 8,
-                background: 'rgba(16, 185, 129, 0.12)',
-                border: '1px solid rgba(16, 185, 129, 0.35)',
-                color: '#34d399',
+                padding: '6px 12px',
+                borderRadius: 6,
+                background: 'var(--bg-surface)',
+                border: '1px solid var(--border-medium)',
+                color: 'var(--text-primary)',
                 fontSize: '0.78rem',
-                fontWeight: 600,
+                fontWeight: 500,
                 cursor: 'pointer'
               }}
             >
-              <FileCheck size={14} />
-              Official UKVI Dossier
+              <FileCheck2 size={13} color="#10b981" />
+              UKVI Dossier
             </button>
 
+            {/* Socket Status Indicator */}
             <div style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 8,
-              fontSize: '0.75rem',
-              padding: '6px 12px',
-              borderRadius: 999,
-              background: isConnected ? 'rgba(16, 185, 129, 0.1)' : 'rgba(244, 63, 94, 0.1)',
-              border: isConnected ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid rgba(244, 63, 94, 0.25)',
-              color: isConnected ? '#34d399' : '#fb7185'
+              gap: 6,
+              fontSize: '0.74rem',
+              color: isConnected ? '#34d399' : 'var(--text-muted)',
+              padding: '4px 8px',
+              borderRadius: 4,
+              background: 'var(--bg-subtle)',
+              border: '1px solid var(--border-subtle)'
             }}>
               <span style={{
-                width: 7,
-                height: 7,
+                width: 6,
+                height: 6,
                 borderRadius: '50%',
-                backgroundColor: isConnected ? '#10b981' : '#f43f5e',
-                boxShadow: isConnected ? '0 0 8px #10b981' : 'none'
+                backgroundColor: isConnected ? '#10b981' : '#64748b'
               }} />
-              {isConnected ? 'Socket Sync' : 'Reconnecting...'}
+              {isConnected ? 'Sync Active' : 'Offline Mode'}
             </div>
           </div>
         </div>
       </header>
 
-      {/* Official Dossier Lightbox */}
       <DossierModal
         isOpen={dossierOpen}
         onClose={() => setDossierOpen(false)}

@@ -1,76 +1,58 @@
 import React from 'react';
-import { Sparkles, Play, Briefcase, GraduationCap, Globe } from 'lucide-react';
+import { Briefcase, GraduationCap, Globe } from 'lucide-react';
 
 export const JudgeScenarioBar = ({ onSelectScenario, currentScenario }) => {
   const scenarios = [
-    {
-      id: 'bloomberg',
-      label: '1. Tunde (Bloomberg UK)',
-      sub: 'Skilled Worker ? CoS Guarantee',
-      icon: <Briefcase size={14} color="#818cf8" />
-    },
-    {
-      id: 'imperial',
-      label: '2. Amaka (Imperial London)',
-      sub: 'Student Visa ? ?1,270 Deficit Check',
-      icon: <GraduationCap size={14} color="#06b6d4" />
-    },
-    {
-      id: 'siemens',
-      label: '3. Chidi (Siemens Munich)',
-      sub: 'Schengen Business ? Instant Fast Track',
-      icon: <Globe size={14} color="#10b981" />
-    }
+    { id: 'bloomberg', label: 'Tunde (Bloomberg UK)', sub: 'Skilled Worker', icon: <Briefcase size={12} color="#60a5fa" /> },
+    { id: 'imperial', label: 'Amaka (Imperial London)', sub: 'Student Visa', icon: <GraduationCap size={12} color="#10b981" /> },
+    { id: 'siemens', label: 'Chidi (Siemens Munich)', sub: 'Schengen Business', icon: <Globe size={12} color="#f59e0b" /> }
   ];
 
   return (
     <div style={{
       position: 'fixed',
-      bottom: 20,
+      bottom: 16,
       left: '50%',
       transform: 'translateX(-50%)',
       zIndex: 150,
-      background: 'rgba(10, 15, 29, 0.92)',
-      backdropFilter: 'blur(20px)',
-      border: '1px solid rgba(99, 102, 241, 0.4)',
+      background: '#12141c',
+      border: '1px solid var(--border-medium)',
       borderRadius: 999,
-      padding: '8px 16px',
+      padding: '6px 14px',
       display: 'flex',
       alignItems: 'center',
-      gap: 12,
-      boxShadow: '0 12px 36px rgba(0, 0, 0, 0.6), 0 0 20px rgba(99, 102, 241, 0.25)'
+      gap: 10,
+      boxShadow: '0 8px 24px rgba(0, 0, 0, 0.6)'
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.75rem', fontWeight: 800, color: '#818cf8', paddingRight: 6, borderRight: '1px solid var(--border-subtle)' }}>
-        <Sparkles size={14} />
-        JUDGE PRESETS
+      <div style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', paddingRight: 6, borderRight: '1px solid var(--border-subtle)' }}>
+        Presets
       </div>
 
-      <div style={{ display: 'flex', gap: 8 }}>
+      <div style={{ display: 'flex', gap: 6 }}>
         {scenarios.map((sc) => {
           const isActive = currentScenario === sc.id;
           return (
             <button
               key={sc.id}
+              type="button"
               onClick={() => onSelectScenario(sc.id)}
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 8,
-                padding: '6px 14px',
+                gap: 6,
+                padding: '4px 10px',
                 borderRadius: 999,
-                fontSize: '0.78rem',
-                fontWeight: 600,
+                fontSize: '0.74rem',
+                fontWeight: 500,
                 cursor: 'pointer',
-                border: isActive ? '1px solid var(--accent-indigo)' : '1px solid var(--border-subtle)',
-                background: isActive ? 'linear-gradient(135deg, rgba(79, 70, 229, 0.4) 0%, rgba(6, 182, 212, 0.3) 100%)' : 'rgba(255, 255, 255, 0.05)',
+                border: isActive ? '1px solid #3b82f6' : '1px solid var(--border-subtle)',
+                background: isActive ? 'var(--bg-surface-elevated)' : 'transparent',
                 color: isActive ? '#fff' : 'var(--text-secondary)',
-                transition: 'all 0.2s ease'
+                transition: 'all 0.1s ease'
               }}
             >
               {sc.icon}
-              <div style={{ textAlign: 'left' }}>
-                <div>{sc.label}</div>
-              </div>
+              <span>{sc.label}</span>
             </button>
           );
         })}

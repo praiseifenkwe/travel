@@ -1,25 +1,29 @@
 import React from 'react';
-import { AlertTriangle, CheckCircle2, ShieldAlert, Check, HelpCircle, Send } from 'lucide-react';
+import { ShieldCheck, AlertTriangle, Check, HelpCircle, Send } from 'lucide-react';
 import { Button } from '../shared/Button';
 
 export const AuditCard = ({ issues = [], onStaffAction, loading }) => {
   if (!issues || issues.length === 0) {
     return (
-      <div className="glass-panel" style={{ padding: 20, textAlign: 'center', marginBottom: 20 }}>
-        <CheckCircle2 size={36} color="#34d399" style={{ margin: '0 auto 10px' }} />
-        <h4 style={{ fontSize: '1rem', fontWeight: 700, color: '#34d399' }}>Immigration Compliance Cleared</h4>
-        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 4 }}>
-          All mandatory documents meet UKVI Skilled Worker criteria. Ready for formal submission.
-        </p>
-        <div style={{ marginTop: 14 }}>
+      <div className="tf-card" style={{ padding: 18, marginBottom: 14, border: '1px solid var(--success-border)', background: 'var(--success-subtle)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <ShieldCheck size={20} color="#10b981" />
+            <div>
+              <div style={{ fontSize: '0.88rem', fontWeight: 600, color: '#34d399' }}>Immigration Compliance Cleared</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                All mandatory evidential requirements satisfy UKVI Skilled Worker Immigration Rules.
+              </div>
+            </div>
+          </div>
           <Button
             variant="success"
             size="sm"
             onClick={() => onStaffAction('authorize_submit')}
             loading={loading}
-            icon={<Send size={14} />}
+            icon={<Send size={13} />}
           >
-            Authorize UKVI Submission
+            Authorize UKVI Filing
           </Button>
         </div>
       </div>
@@ -27,65 +31,45 @@ export const AuditCard = ({ issues = [], onStaffAction, loading }) => {
   }
 
   return (
-    <div className="glass-panel" style={{ padding: 20, marginBottom: 20, border: '1px solid rgba(245, 158, 11, 0.4)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-        <div style={{
-          width: 36,
-          height: 36,
-          borderRadius: 8,
-          background: 'rgba(245, 158, 11, 0.2)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          <ShieldAlert size={20} color="#fbbf24" />
-        </div>
+    <div className="tf-card" style={{ padding: 18, marginBottom: 14, border: '1px solid var(--warning-border)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <AlertTriangle size={16} color="#fbbf24" />
         <div>
-          <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#fbbf24' }}>
-            Human-in-the-Loop Audit Required
-          </h4>
-          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            Deterministic compliance engine detected rule deviations
-          </p>
+          <div style={{ fontSize: '0.86rem', fontWeight: 600, color: '#fbbf24' }}>
+            Consular Discrepancy Flagged
+          </div>
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+            Deterministic rule check requires licensed immigration consultant intervention
+          </div>
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {issues.map((issue, idx) => (
-          <div
-            key={idx}
-            style={{
-              background: 'rgba(15, 23, 42, 0.6)',
-              padding: 14,
-              borderRadius: 10,
-              border: '1px solid rgba(245, 158, 11, 0.25)'
-            }}
-          >
-            <div style={{ fontSize: '0.84rem', fontWeight: 600, color: '#fef08a', marginBottom: 4 }}>
+          <div key={idx} style={{ background: 'var(--bg-subtle)', padding: 12, borderRadius: 6, border: '1px solid var(--border-subtle)' }}>
+            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#fef08a', marginBottom: 2 }}>
               Rule: {issue.rule.replace(/_/g, ' ').toUpperCase()} ({issue.document})
             </div>
-            <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 12 }}>
+            <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', lineHeight: 1.45, marginBottom: 10 }}>
               {issue.detail}
             </div>
 
-            {/* Consultant HITL Action Buttons */}
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 8 }}>
               <Button
                 variant="success"
                 size="sm"
                 onClick={() => onStaffAction('override_issue', issue.rule, 'Employer confirms maintenance guarantee under CoS section A2')}
                 loading={loading}
-                icon={<Check size={14} />}
+                icon={<Check size={13} />}
               >
-                Approve Under Employer Guarantee
+                Approve Under CoS Section A2
               </Button>
-
               <Button
-                variant="danger"
+                variant="secondary"
                 size="sm"
-                onClick={() => onStaffAction('query_client', issue.rule, 'Please provide alternative 28-day statement with closing balance >= ?1,270')}
+                onClick={() => onStaffAction('query_client', issue.rule, 'Request additional 28-day continuous statement')}
                 loading={loading}
-                icon={<HelpCircle size={14} />}
+                icon={<HelpCircle size={13} />}
               >
                 Query Applicant
               </Button>

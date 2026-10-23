@@ -1,112 +1,91 @@
 import React, { useState } from 'react';
-import { FileCheck, AlertTriangle, ShieldCheck, Eye, X, CheckCircle2 } from 'lucide-react';
+import { FileCheck, AlertTriangle, Eye, X } from 'lucide-react';
 import { Badge } from '../shared/Badge';
 import { Button } from '../shared/Button';
 
 export const DocumentCard = ({ doc }) => {
   const [inspectModalOpen, setInspectModalOpen] = useState(false);
   const isFlagged = doc.status === 'flagged';
-  const isPassed = doc.status === 'passed';
 
   return (
     <>
       <div
-        className="glass-panel"
+        className="tf-card"
         style={{
-          padding: 18,
-          marginBottom: 14,
-          border: isFlagged ? '1px solid rgba(245, 158, 11, 0.45)' : undefined,
-          transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
+          padding: 14,
+          marginBottom: 10,
+          border: isFlagged ? '1px solid var(--warning-border)' : '1px solid var(--border-subtle)'
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{
-              width: 38,
-              height: 38,
-              borderRadius: 10,
-              background: isFlagged ? 'rgba(245, 158, 11, 0.18)' : 'rgba(16, 185, 129, 0.18)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-              {isFlagged ? (
-                <AlertTriangle size={20} color="#fbbf24" />
-              ) : (
-                <FileCheck size={20} color="#34d399" />
-              )}
-            </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {isFlagged ? (
+              <AlertTriangle size={16} color="#fbbf24" />
+            ) : (
+              <FileCheck size={16} color="#10b981" />
+            )}
             <div>
-              <div style={{ fontWeight: 800, fontSize: '0.95rem', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+              <span style={{ fontWeight: 600, fontSize: '0.86rem', textTransform: 'capitalize' }}>
                 {doc.doc_type?.replace(/_/g, ' ')}
-              </div>
-              <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+              </span>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginLeft: 8 }}>
                 {doc.original_filename || 'Uploaded Document'} ? Confidence: {Math.round((doc.ai_confidence || 0.95) * 100)}%
-              </div>
+              </span>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <Badge status={doc.status} />
             <button
               onClick={() => setInspectModalOpen(true)}
               style={{
-                background: 'rgba(255, 255, 255, 0.06)',
+                background: 'var(--bg-subtle)',
                 border: '1px solid var(--border-subtle)',
-                padding: '5px 10px',
-                borderRadius: 6,
+                padding: '3px 8px',
+                borderRadius: 4,
                 color: 'var(--text-secondary)',
                 fontSize: '0.72rem',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4
+                cursor: 'pointer'
               }}
             >
-              <Eye size={12} />
-              Details
+              Inspect OCR
             </button>
           </div>
         </div>
 
-        {/* Extracted Fields Summary */}
+        {/* Extracted Data Row */}
         {doc.extracted_data && Object.keys(doc.extracted_data).length > 0 && (
           <div style={{
-            background: 'rgba(15, 23, 42, 0.55)',
-            padding: 12,
-            borderRadius: 8,
-            fontSize: '0.8rem',
+            background: 'var(--bg-subtle)',
+            padding: '8px 10px',
+            borderRadius: 6,
+            fontSize: '0.76rem',
             display: 'grid',
             gridTemplateColumns: 'repeat(2, 1fr)',
-            gap: 8,
-            marginBottom: 10
+            gap: 6
           }}>
             {Object.entries(doc.extracted_data).slice(0, 4).map(([k, v]) => (
               <div key={k}>
-                <span style={{ color: 'var(--text-muted)', textTransform: 'capitalize' }}>
-                  {k.replace(/_/g, ' ')}:
-                </span>{' '}
+                <span style={{ color: 'var(--text-muted)', textTransform: 'capitalize' }}>{k.replace(/_/g, ' ')}:</span>{' '}
                 <strong style={{ color: '#fff' }}>{String(v)}</strong>
               </div>
             ))}
           </div>
         )}
 
-        {/* Issues if any */}
+        {/* Issues */}
         {doc.issues && doc.issues.length > 0 && (
           <div style={{
-            background: 'rgba(245, 158, 11, 0.12)',
-            border: '1px solid rgba(245, 158, 11, 0.35)',
-            borderRadius: 8,
-            padding: '10px 14px',
-            fontSize: '0.78rem',
-            color: '#fef08a'
+            background: 'var(--warning-subtle)',
+            border: '1px solid var(--warning-border)',
+            borderRadius: 6,
+            padding: '6px 10px',
+            fontSize: '0.74rem',
+            color: '#fbbf24',
+            marginTop: 8
           }}>
             {doc.issues.map((issue, idx) => (
-              <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                <span>??</span>
-                <span>{issue.detail}</span>
-              </div>
+              <div key={idx}>?? {issue.detail}</div>
             ))}
           </div>
         )}
@@ -117,63 +96,41 @@ export const DocumentCard = ({ doc }) => {
         <div style={{
           position: 'fixed',
           inset: 0,
-          background: 'rgba(0, 0, 0, 0.8)',
-          backdropFilter: 'blur(8px)',
+          background: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(4px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 300,
           padding: 20
         }}>
-          <div className="glass-panel" style={{ width: '100%', maxWidth: 600, padding: 24, position: 'relative' }}>
+          <div className="tf-card" style={{ width: '100%', maxWidth: 540, padding: 22, position: 'relative', background: '#0e1017' }}>
             <button
               onClick={() => setInspectModalOpen(false)}
-              style={{
-                position: 'absolute',
-                top: 20,
-                right: 20,
-                background: 'transparent',
-                border: 'none',
-                color: '#94a3b8',
-                cursor: 'pointer'
-              }}
+              style={{ position: 'absolute', top: 16, right: 16, background: 'transparent', border: 'none', color: '#8e94a4', cursor: 'pointer' }}
             >
-              <X size={20} />
+              <X size={18} />
             </button>
 
-            <h3 style={{ fontSize: '1.15rem', fontWeight: 800, marginBottom: 4 }}>
-              GPT-4o Vision OCR Extraction
+            <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 2 }}>
+              Raw OCR Extraction Metadata
             </h3>
-            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 16 }}>
-              {doc.doc_type?.toUpperCase()} ? Extracted with {Math.round((doc.ai_confidence || 0.95) * 100)}% model certainty
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 14 }}>
+              {doc.doc_type?.toUpperCase()} ? Extracted with {Math.round((doc.ai_confidence || 0.95) * 100)}% model confidence
             </p>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 18 }}>
               {doc.extracted_data && Object.entries(doc.extracted_data).map(([k, v]) => (
-                <div
-                  key={k}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    padding: '8px 12px',
-                    borderRadius: 6,
-                    background: 'rgba(15, 23, 42, 0.6)',
-                    fontSize: '0.82rem'
-                  }}
-                >
-                  <span style={{ color: 'var(--text-muted)', textTransform: 'capitalize' }}>
-                    {k.replace(/_/g, ' ')}
-                  </span>
-                  <span className="mono" style={{ color: '#38bdf8', fontWeight: 600 }}>
-                    {String(v)}
-                  </span>
+                <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 10px', background: 'var(--bg-subtle)', borderRadius: 4, fontSize: '0.78rem' }}>
+                  <span style={{ color: 'var(--text-muted)', textTransform: 'capitalize' }}>{k.replace(/_/g, ' ')}</span>
+                  <span className="mono" style={{ color: '#fff' }}>{String(v)}</span>
                 </div>
               ))}
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <Button variant="primary" size="sm" onClick={() => setInspectModalOpen(false)}>
-                Done
+              <Button variant="secondary" size="sm" onClick={() => setInspectModalOpen(false)}>
+                Close
               </Button>
             </div>
           </div>

@@ -1,144 +1,133 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Sparkles, ArrowRight, ShieldCheck, Zap, Globe, FileCheck2, Plane, Clock, CheckCircle2, Lock, Cpu } from 'lucide-react';
+import { ArrowRight, ShieldCheck, Zap, FileCheck2, Cpu, Check, ArrowUpRight, Lock, CheckCircle2 } from 'lucide-react';
 import { Button } from '../components/shared/Button';
 
 export const Landing = () => {
   return (
-    <div style={{ maxWidth: 1240, margin: '0 auto', padding: '40px 20px 80px' }}>
-      {/* Hackathon Header Tag */}
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
+    <div style={{ maxWidth: 1180, margin: '0 auto', padding: '50px 20px 100px' }}>
+      {/* Top Release Tag */}
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
         <div style={{
           display: 'inline-flex',
           alignItems: 'center',
           gap: 8,
-          padding: '8px 18px',
+          padding: '4px 12px',
           borderRadius: 999,
-          background: 'rgba(99, 102, 241, 0.14)',
-          border: '1px solid rgba(99, 102, 241, 0.35)',
-          color: '#818cf8',
-          fontSize: '0.84rem',
-          fontWeight: 600,
-          boxShadow: '0 0 16px rgba(99, 102, 241, 0.2)'
+          background: 'var(--bg-surface-elevated)',
+          border: '1px solid var(--border-medium)',
+          color: 'var(--text-secondary)',
+          fontSize: '0.8rem'
         }}>
-          <Sparkles size={15} />
-          PAU Hackathon ? Re-imagining the AI-Native Digital Universe
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#2563eb' }} />
+          <span>PAU Hackathon Showcase</span>
+          <span style={{ color: 'var(--border-medium)' }}>?</span>
+          <span style={{ color: '#60a5fa' }}>Skilled Worker Pathway</span>
         </div>
       </div>
 
-      {/* Hero Headline */}
-      <div style={{ textAlign: 'center', maxWidth: 940, margin: '0 auto 32px' }}>
-        <h1 style={{ fontSize: '3.8rem', fontWeight: 800, lineHeight: 1.12, marginBottom: 20 }}>
-          The AI-Native Operating System for <br />
-          <span className="text-gradient">Visa & Relocation Logistics</span>
+      {/* Main Hero Header */}
+      <div style={{ textAlign: 'center', maxWidth: 840, margin: '0 auto 36px' }}>
+        <h1 style={{ fontSize: '3.4rem', fontWeight: 700, lineHeight: 1.15, letterSpacing: '-0.035em', marginBottom: 18 }}>
+          Automated compliance & relocation infrastructure.
         </h1>
-        <p style={{ fontSize: '1.25rem', color: 'var(--text-secondary)', lineHeight: 1.6, maxWidth: 800, margin: '0 auto' }}>
-          Transforming a manual 3-week, high-stress visa application ordeal into an intelligent, transparent, 15-minute orchestrated workflow powered by GPT-4o Vision and deterministic compliance gatekeeping.
+        <p style={{ fontSize: '1.15rem', color: 'var(--text-secondary)', lineHeight: 1.6, maxWidth: 680, margin: '0 auto' }}>
+          TravelForge transforms fragmented immigration paperwork into an orchestrated 15-minute compliance workflow using GPT-4o Vision and deterministic consular rule enforcement.
         </p>
       </div>
 
-      {/* CTA Buttons */}
-      <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginBottom: 50, flexWrap: 'wrap' }}>
+      {/* Hero CTA Buttons */}
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginBottom: 54 }}>
         <Link to="/client" style={{ textDecoration: 'none' }}>
-          <Button variant="primary" style={{ padding: '14px 30px', fontSize: '1.05rem' }} icon={<ArrowRight size={18} />}>
-            Launch Client Portal (/client)
+          <Button variant="primary" style={{ padding: '10px 20px', fontSize: '0.92rem' }} icon={<ArrowRight size={16} />}>
+            Open Applicant Portal
           </Button>
         </Link>
         <Link to="/dashboard" style={{ textDecoration: 'none' }}>
-          <Button variant="secondary" style={{ padding: '14px 30px', fontSize: '1.05rem' }} icon={<ShieldCheck size={18} />}>
-            Agency Control Tower (/dashboard)
+          <Button variant="secondary" style={{ padding: '10px 20px', fontSize: '0.92rem' }} icon={<ShieldCheck size={16} />}>
+            Agency Review Console
           </Button>
         </Link>
       </div>
 
-      {/* Interactive Mockup Container */}
-      <div className="glass-panel-glow" style={{
-        borderRadius: 24,
-        padding: '24px 28px',
+      {/* Clean Interactive Architecture Window (Linear-style Mockup) */}
+      <div className="tf-card" style={{
+        padding: '0',
+        overflow: 'hidden',
         marginBottom: 70,
-        position: 'relative',
-        background: 'linear-gradient(180deg, rgba(16, 23, 42, 0.85) 0%, rgba(10, 15, 29, 0.95) 100%)',
-        border: '1px solid rgba(99, 102, 241, 0.3)'
+        boxShadow: 'var(--shadow-lg)'
       }}>
-        {/* Top Window Bar */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 16, borderBottom: '1px solid var(--border-subtle)', marginBottom: 20 }}>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#ef4444' }} />
-            <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#f59e0b' }} />
-            <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#10b981' }} />
+        {/* Terminal Header */}
+        <div style={{
+          background: '#0d0e14',
+          borderBottom: '1px solid var(--border-subtle)',
+          padding: '10px 18px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          fontSize: '0.78rem'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#262938' }} />
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#262938' }} />
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#262938' }} />
+            </div>
+            <span className="mono" style={{ color: 'var(--text-muted)' }}>
+              travelforge.engine/session/app_tunde_123
+            </span>
           </div>
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-            travelforge.internal/relocation-orchestrator ? Live WebSocket Session
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.74rem', color: '#34d399' }}>
-            <span className="pulse-dot" />
-            Sub-50ms Sync
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#10b981', fontSize: '0.75rem' }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }} />
+            Active WebSocket Session
           </div>
         </div>
 
-        {/* Dual Screen Mockup Split */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: 20 }}>
-          {/* Left Preview: Client Portal */}
-          <div style={{
-            background: 'rgba(15, 23, 42, 0.6)',
-            borderRadius: 14,
-            padding: 18,
-            border: '1px solid var(--border-subtle)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#38bdf8' }}>Client Conversational Intake</span>
-              <span className="badge badge-passed" style={{ fontSize: '0.7rem' }}>Natural Nigerian English</span>
+        {/* Mockup Body: Clean 2-Column Overview */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', background: '#0a0b10' }}>
+          {/* Left: Applicant View */}
+          <div style={{ padding: 24, borderRight: '1px solid var(--border-subtle)' }}>
+            <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', fontWeight: 600, marginBottom: 12 }}>
+              01 / APPLICANT INTAKE
             </div>
-            <div style={{
-              background: 'rgba(30, 41, 59, 0.7)',
-              borderRadius: 10,
-              padding: 12,
-              fontSize: '0.82rem',
-              color: '#e2e8f0',
-              lineHeight: 1.5,
-              marginBottom: 10
-            }}>
-              "I am relocating to London next month to join Bloomberg as a Senior Software Engineer. I have my CoS and passport ready."
+            <div style={{ background: 'var(--bg-surface-elevated)', border: '1px solid var(--border-medium)', borderRadius: 8, padding: 14, marginBottom: 12 }}>
+              <div style={{ fontSize: '0.85rem', color: '#fff', fontWeight: 500 }}>
+                "Relocating to London for Bloomberg LP as Senior Software Engineer. Checking maintenance & CoS."
+              </div>
             </div>
-            <div style={{
-              background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.15) 0%, rgba(6, 182, 212, 0.15) 100%)',
-              border: '1px solid rgba(99, 102, 241, 0.3)',
-              borderRadius: 10,
-              padding: 12,
-              fontSize: '0.8rem',
-              color: '#c7d2fe'
-            }}>
-              ? AI Identified: <strong>UK Skilled Worker (Main)</strong> ? 4 mandatory checklist artifacts generated.
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {[
+                { name: 'Passport (Bio Page)', status: 'Verified (98%)' },
+                { name: 'Certificate of Sponsorship', status: 'Active (Tier-A)' },
+                { name: 'IOM TB Test Certificate', status: 'Cleared' },
+                { name: '28-Day Bank Statement', status: 'Verified (?14.5M)' }
+              ].map((item, idx) => (
+                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 10px', background: 'var(--bg-subtle)', borderRadius: 6, fontSize: '0.78rem' }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>{item.name}</span>
+                  <span style={{ color: '#10b981', fontWeight: 500 }}>{item.status}</span>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* Right Preview: Staff HITL Audit */}
-          <div style={{
-            background: 'rgba(15, 23, 42, 0.6)',
-            borderRadius: 14,
-            padding: 18,
-            border: '1px solid var(--border-subtle)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#fbbf24' }}>Consultant Audit & Gatekeeping</span>
-              <span className="badge badge-flagged" style={{ fontSize: '0.7rem' }}>HITL Action Required</span>
+          {/* Right: Consular View */}
+          <div style={{ padding: 24 }}>
+            <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', fontWeight: 600, marginBottom: 12 }}>
+              02 / DETERMINISTIC COMPLIANCE AUDIT
             </div>
-            <div style={{
-              background: 'rgba(245, 158, 11, 0.1)',
-              border: '1px solid rgba(245, 158, 11, 0.3)',
-              borderRadius: 10,
-              padding: 12,
-              fontSize: '0.8rem',
-              color: '#fef08a',
-              marginBottom: 10
-            }}>
-              ?? Passport validity 4.5 months (&lt; 6 months threshold). Maintenance certified by Bloomberg under Section A2.
+            <div style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid var(--warning-border)', borderRadius: 8, padding: 12, marginBottom: 14 }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#fbbf24', marginBottom: 2 }}>
+                Rule FIN 2.1: Maintenance Guarantee Verification
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                Applicant balance falls under personal ?1,270 threshold. Sponsor certified maintenance under CoS Section A2.
+              </div>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <span className="btn btn-success btn-sm" style={{ fontSize: '0.74rem', padding: '6px 12px' }}>
-                ? One-Click Employer Clearance
+              <span className="btn btn-success btn-sm" style={{ fontSize: '0.75rem' }}>
+                ? Approve CoS Guarantee
               </span>
-              <span className="btn btn-secondary btn-sm" style={{ fontSize: '0.74rem', padding: '6px 12px' }}>
+              <span className="btn btn-secondary btn-sm" style={{ fontSize: '0.75rem' }}>
                 Inspect OCR Diff
               </span>
             </div>
@@ -146,89 +135,63 @@ export const Landing = () => {
         </div>
       </div>
 
-      {/* 3 Pillars Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24, marginBottom: 60 }}>
-        <div className="glass-panel" style={{ padding: 28 }}>
-          <div style={{
-            width: 48,
-            height: 48,
-            borderRadius: 12,
-            background: 'linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: 20
-          }}>
-            <Zap size={24} color="#fff" />
+      {/* 3 Core Architecture Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 18, marginBottom: 60 }}>
+        <div className="tf-card" style={{ padding: 22 }}>
+          <div style={{ width: 32, height: 32, borderRadius: 6, background: 'var(--bg-surface-elevated)', border: '1px solid var(--border-medium)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+            <Zap size={16} color="#60a5fa" />
           </div>
-          <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 10 }}>Conversational Intake</h3>
-          <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-            Multimodal natural language intake fine-tuned for Nigerian English phrasing. Extracts visa pathway, employer, and dates into structured checklists.
+          <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 6 }}>Conversational Slot-Filling</h3>
+          <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+            Natural language understanding extracts visa pathway, employer constraints, and timeline into a structured intake record without manual forms.
           </p>
         </div>
 
-        <div className="glass-panel" style={{ padding: 28 }}>
-          <div style={{
-            width: 48,
-            height: 48,
-            borderRadius: 12,
-            background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: 20
-          }}>
-            <FileCheck2 size={24} color="#fff" />
+        <div className="tf-card" style={{ padding: 22 }}>
+          <div style={{ width: 32, height: 32, borderRadius: 6, background: 'var(--bg-surface-elevated)', border: '1px solid var(--border-medium)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+            <FileCheck2 size={16} color="#10b981" />
           </div>
-          <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 10 }}>Vision OCR & Rules Engine</h3>
-          <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-            GPT-4o Vision parses passports, CoS, and 28-day bank balances. A deterministic Python engine enforces official UKVI thresholds with zero hallucinations.
+          <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 6 }}>Deterministic Rules Engine</h3>
+          <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+            Immigration thresholds (funds, validity, clinic accreditation) run on pure, auditable Python logic rather than hallucination-prone LLM calls.
           </p>
         </div>
 
-        <div className="glass-panel" style={{ padding: 28 }}>
-          <div style={{
-            width: 48,
-            height: 48,
-            borderRadius: 12,
-            background: 'linear-gradient(135deg, #d97706 0%, #f59e0b 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: 20
-          }}>
-            <ShieldCheck size={24} color="#fff" />
+        <div className="tf-card" style={{ padding: 22 }}>
+          <div style={{ width: 32, height: 32, borderRadius: 6, background: 'var(--bg-surface-elevated)', border: '1px solid var(--border-medium)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+            <ShieldCheck size={16} color="#f59e0b" />
           </div>
-          <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 10 }}>Human-in-the-Loop Control</h3>
-          <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-            Licensed consultants review discrepancy audits, conduct side-by-side OCR diff inspections, and override sponsor guarantees with live WebSocket sync.
+          <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 6 }}>Human-in-the-Loop Gateway</h3>
+          <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+            Licensed agency staff review side-by-side OCR discrepancies, apply legal exemptions, and authorize formal UKVI electronic submission.
           </p>
         </div>
       </div>
 
-      {/* Hackathon Stats Bar */}
-      <div className="glass-panel" style={{
-        padding: '24px 32px',
+      {/* Metrics Row */}
+      <div style={{
+        borderTop: '1px solid var(--border-subtle)',
+        borderBottom: '1px solid var(--border-subtle)',
+        padding: '24px 0',
         display: 'grid',
         gridTemplateColumns: 'repeat(4, 1fr)',
-        gap: 20,
-        textAlign: 'center'
+        gap: 20
       }}>
         <div>
-          <div style={{ fontSize: '2rem', fontWeight: 800, color: '#38bdf8' }}>15 min</div>
-          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Average Processing Time (vs 3 weeks)</div>
+          <div style={{ fontSize: '1.8rem', fontWeight: 700, color: '#fff', letterSpacing: '-0.03em' }}>15 min</div>
+          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Average Processing Time</div>
         </div>
         <div>
-          <div style={{ fontSize: '2rem', fontWeight: 800, color: '#34d399' }}>0%</div>
-          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>UKVI Section 320 Refusals</div>
+          <div style={{ fontSize: '1.8rem', fontWeight: 700, color: '#10b981', letterSpacing: '-0.03em' }}>0%</div>
+          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>UKVI Section 320 Rejections</div>
         </div>
         <div>
-          <div style={{ fontSize: '2rem', fontWeight: 800, color: '#818cf8' }}>100%</div>
-          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Deterministic Rule Verification</div>
+          <div style={{ fontSize: '1.8rem', fontWeight: 700, color: '#fff', letterSpacing: '-0.03em' }}>100%</div>
+          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Deterministic Verification</div>
         </div>
         <div>
-          <div style={{ fontSize: '2rem', fontWeight: 800, color: '#fbbf24' }}>HITL</div>
-          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Consultant Approval Gatekeeper</div>
+          <div style={{ fontSize: '1.8rem', fontWeight: 700, color: '#60a5fa', letterSpacing: '-0.03em' }}>&lt; 50ms</div>
+          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Real-time Consular Sync</div>
         </div>
       </div>
     </div>

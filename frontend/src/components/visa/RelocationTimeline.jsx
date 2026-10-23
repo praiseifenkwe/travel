@@ -1,126 +1,63 @@
 import React from 'react';
-import { Calendar, Plane, Home, ShieldCheck, CheckCircle2, Building, Sparkles } from 'lucide-react';
+import { Calendar, CheckCircle2 } from 'lucide-react';
 
 export const RelocationTimeline = () => {
   const events = [
-    {
-      day: 'Day 1',
-      title: 'Automated AI Intake & Document Audit',
-      subtitle: 'TravelForge NLU slot-filling & OCR extracts passport, CoS, and financial statements.',
-      status: 'completed',
-      date: 'Oct 23, 2026'
-    },
-    {
-      day: 'Day 3',
-      title: 'Human-in-the-Loop Clearance & UKVI Filing',
-      subtitle: 'Licensed consultant overrides maintenance check via CoS Section A2 guarantee.',
-      status: 'completed',
-      date: 'Oct 25, 2026'
-    },
-    {
-      day: 'Day 7',
-      title: 'TLScontact Biometrics Appointment',
-      subtitle: 'Premium lounge biometric enrollment at TLScontact Victoria Island, Lagos.',
-      status: 'current',
-      date: 'Nov 2, 2026'
-    },
-    {
-      day: 'Day 16',
-      title: 'UKVI Visa Decision & Vignette Collection',
-      subtitle: '3-Year Skilled Worker visa sticker issued in passport and couriered via DHL.',
-      status: 'upcoming',
-      date: 'Nov 11, 2026'
-    },
-    {
-      day: 'Day 21',
-      title: 'Flight BA76 Departure (LOS ? LHR)',
-      subtitle: 'British Airways direct flight from Lagos Murtala Muhammed to London Heathrow.',
-      status: 'upcoming',
-      date: 'Nov 15, 2026'
-    },
-    {
-      day: 'Day 22',
-      title: 'Canary Wharf Corporate Accommodation',
-      subtitle: 'Check-in to 2-week Bloomberg sponsored serviced apartment in Canary Wharf.',
-      status: 'upcoming',
-      date: 'Nov 16, 2026'
-    }
+    { day: 'Day 1', title: 'Automated Intake & Evidence Audit', desc: 'NLU slot-filling & OCR extracts passport, CoS, and 28-day bank balance.', status: 'completed', date: 'Oct 23, 2026' },
+    { day: 'Day 3', title: 'Consular Review & CoS Clearance', desc: 'Licensed consultant reconciles maintenance under CoS Section A2 guarantee.', status: 'completed', date: 'Oct 25, 2026' },
+    { day: 'Day 7', title: 'TLScontact Biometrics Enrollment', desc: 'Biometric enrollment at TLScontact Victoria Island, Lagos.', status: 'current', date: 'Nov 2, 2026' },
+    { day: 'Day 16', title: 'UKVI Visa Vignette Issuance', desc: '3-Year Skilled Worker vignette affixed to passport and dispatched via courier.', status: 'upcoming', date: 'Nov 11, 2026' },
+    { day: 'Day 21', title: 'Relocation Flight (LOS ? LHR)', desc: 'British Airways direct flight from Lagos Murtala Muhammed to London Heathrow.', status: 'upcoming', date: 'Nov 15, 2026' },
+    { day: 'Day 22', title: 'Canary Wharf Move-In', desc: 'Check-in to 2-week Bloomberg sponsored corporate apartment in Canary Wharf.', status: 'upcoming', date: 'Nov 16, 2026' }
   ];
 
   return (
-    <div className="glass-panel" style={{ padding: 22, marginBottom: 20 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{
-            width: 36,
-            height: 36,
-            borderRadius: 10,
-            background: 'linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <Calendar size={18} color="#fff" />
-          </div>
-          <div>
-            <h4 style={{ fontSize: '1rem', fontWeight: 700 }}>30-Day Relocation Journey Roadmap</h4>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              Orchestrated timeline from Lagos intake to London Canary Wharf move-in
-            </p>
-          </div>
+    <div className="tf-card" style={{ padding: 18, marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+        <div>
+          <div style={{ fontSize: '0.86rem', fontWeight: 600 }}>Relocation Milestone Schedule</div>
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Estimated journey from Lagos intake to London move-in</div>
         </div>
         <span className="badge badge-passed">On Track</span>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, position: 'relative', paddingLeft: 12 }}>
-        {/* Vertical Guide Line */}
-        <div style={{
-          position: 'absolute',
-          left: 20,
-          top: 10,
-          bottom: 10,
-          width: 2,
-          background: 'rgba(255, 255, 255, 0.08)'
-        }} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, position: 'relative', paddingLeft: 8 }}>
+        <div style={{ position: 'absolute', left: 14, top: 8, bottom: 8, width: 1, background: 'var(--border-medium)' }} />
 
         {events.map((ev, i) => {
           const isDone = ev.status === 'completed';
           const isCurrent = ev.status === 'current';
 
           return (
-            <div key={i} style={{ display: 'flex', gap: 16, position: 'relative', zIndex: 1 }}>
+            <div key={i} style={{ display: 'flex', gap: 12, position: 'relative', zIndex: 1 }}>
               <div style={{
-                width: 18,
-                height: 18,
+                width: 14,
+                height: 14,
                 borderRadius: '50%',
-                background: isDone ? '#10b981' : isCurrent ? '#06b6d4' : '#1e293b',
-                border: isCurrent ? '3px solid rgba(6, 182, 212, 0.4)' : '2px solid rgba(255,255,255,0.1)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                background: isDone ? '#10b981' : isCurrent ? '#3b82f6' : '#232533',
+                border: isCurrent ? '2px solid rgba(59, 130, 246, 0.4)' : '1px solid var(--border-medium)',
                 flexShrink: 0,
-                marginTop: 2,
-                boxShadow: isCurrent ? '0 0 10px #06b6d4' : 'none'
+                marginTop: 3
               }} />
 
               <div style={{
                 flex: 1,
-                background: isCurrent ? 'rgba(6, 182, 212, 0.1)' : 'rgba(15, 23, 42, 0.45)',
-                border: isCurrent ? '1px solid rgba(6, 182, 212, 0.35)' : '1px solid var(--border-subtle)',
-                padding: '12px 16px',
-                borderRadius: 10
+                background: isCurrent ? 'var(--bg-surface-elevated)' : 'var(--bg-subtle)',
+                border: isCurrent ? '1px solid var(--border-medium)' : '1px solid var(--border-subtle)',
+                padding: '8px 12px',
+                borderRadius: 6
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span className="mono" style={{ fontSize: '0.72rem', color: isCurrent ? '#38bdf8' : isDone ? '#34d399' : 'var(--text-muted)', fontWeight: 700 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span className="mono" style={{ fontSize: '0.7rem', color: isCurrent ? '#60a5fa' : isDone ? '#10b981' : 'var(--text-muted)', fontWeight: 600 }}>
                       {ev.day}
                     </span>
-                    <strong style={{ fontSize: '0.88rem', color: '#fff' }}>{ev.title}</strong>
+                    <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#fff' }}>{ev.title}</span>
                   </div>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{ev.date}</span>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{ev.date}</span>
                 </div>
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                  {ev.subtitle}
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                  {ev.desc}
                 </div>
               </div>
             </div>

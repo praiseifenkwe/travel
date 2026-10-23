@@ -1,22 +1,22 @@
 import React from 'react';
-import { CheckCircle2, AlertCircle, Clock, Upload } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Clock, Upload, ArrowUpRight } from 'lucide-react';
 
 export const ChecklistCard = ({ items = [], onSelectDocType }) => {
   return (
-    <div className="glass-panel" style={{ padding: 20, marginBottom: 20 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+    <div className="tf-card" style={{ padding: 16, marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <div>
-          <h4 style={{ fontSize: '0.95rem', fontWeight: 700 }}>Mandatory Relocation Checklist</h4>
-          <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Required documents for UKVI compliance audit</p>
+          <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>Required Evidential Checklist</div>
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Mandatory artifacts for UKVI Skilled Worker clearance</div>
         </div>
         <span className="badge badge-processing">Active Intake</span>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {items.map((item) => {
           const isUploaded = item.status === 'uploaded' || item.status === 'passed' || item.status === 'flagged';
           const isFlagged = item.status === 'flagged';
-          
+
           return (
             <div
               key={item.id}
@@ -24,39 +24,36 @@ export const ChecklistCard = ({ items = [], onSelectDocType }) => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                padding: '12px 14px',
-                borderRadius: 10,
-                background: 'rgba(15, 23, 42, 0.5)',
-                border: isFlagged 
-                  ? '1px solid rgba(245, 158, 11, 0.4)' 
-                  : isUploaded 
-                  ? '1px solid rgba(16, 185, 129, 0.3)' 
-                  : '1px solid var(--border-subtle)'
+                padding: '8px 12px',
+                borderRadius: 6,
+                background: isFlagged ? 'var(--warning-subtle)' : isUploaded ? 'var(--success-subtle)' : 'var(--bg-subtle)',
+                border: isFlagged ? '1px solid var(--warning-border)' : isUploaded ? '1px solid var(--success-border)' : '1px solid var(--border-subtle)',
+                fontSize: '0.8rem'
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 {isFlagged ? (
-                  <AlertCircle size={18} color="#fbbf24" />
+                  <AlertCircle size={15} color="#fbbf24" />
                 ) : isUploaded ? (
-                  <CheckCircle2 size={18} color="#34d399" />
+                  <CheckCircle2 size={15} color="#10b981" />
                 ) : (
-                  <Clock size={18} color="#94a3b8" />
+                  <Clock size={15} color="#64748b" />
                 )}
                 <div>
-                  <div style={{ fontSize: '0.88rem', fontWeight: 600 }}>{item.label}</div>
-                  <div style={{ fontSize: '0.72rem', color: isFlagged ? '#fbbf24' : isUploaded ? '#34d399' : 'var(--text-muted)' }}>
-                    {isFlagged ? 'Discrepancy Flagged for HITL Review' : isUploaded ? 'Uploaded & Verified' : 'Awaiting Upload'}
-                  </div>
+                  <span style={{ fontWeight: 500, color: '#fff' }}>{item.label}</span>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginLeft: 8 }}>
+                    {isFlagged ? 'Flagged for Consular Review' : isUploaded ? 'Verified' : 'Pending upload'}
+                  </span>
                 </div>
               </div>
 
               {!isUploaded && onSelectDocType && (
                 <button
+                  type="button"
                   className="btn btn-secondary btn-sm"
                   onClick={() => onSelectDocType(item.id)}
-                  style={{ gap: 6 }}
+                  style={{ padding: '3px 8px', fontSize: '0.72rem', height: 24 }}
                 >
-                  <Upload size={14} />
                   Upload
                 </button>
               )}

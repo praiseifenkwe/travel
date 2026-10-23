@@ -8,16 +8,18 @@ import { RelocationTimeline } from '../components/visa/RelocationTimeline';
 import { DossierModal } from '../components/shared/DossierModal';
 import { apiService } from '../services/api';
 import { useSocket } from '../hooks/useSocket';
-import { Sparkles, CheckCircle2, AlertTriangle, ArrowRight, ShieldCheck, Plane, FileText } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, ArrowRight, ShieldCheck, FileCheck2, Building2 } from 'lucide-react';
 import { Button } from '../components/shared/Button';
+import { Badge } from '../components/shared/Badge';
 
 export const ClientPortal = () => {
   const [applicationId, setApplicationId] = useState('app_tunde_123');
   const [toastMessage, setToastMessage] = useState(null);
+  const [dossierOpen, setDossierOpen] = useState(false);
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      content: 'Welcome to TravelForge! I am your AI Immigration Specialist. Tell me about your upcoming travel or relocation plans (destination, employer offer, timeline), and I will generate your live compliance checklist.'
+      content: 'Welcome to TravelForge. I am your automated immigration specialist. Please provide details regarding your relocation destination, sponsoring employer, or visa route to initialize your compliance checklist.'
     }
   ]);
   const [checklist, setChecklist] = useState([
@@ -31,7 +33,6 @@ export const ClientPortal = () => {
   const [loadingChat, setLoadingChat] = useState(false);
   const [selectedDocType, setSelectedDocType] = useState('passport');
   const [appStage, setAppStage] = useState('intake');
-  const [dossierOpen, setDossierOpen] = useState(false);
   const [appData, setAppData] = useState({
     client_name: 'Tunde Adeyemi',
     destination: 'United Kingdom',
@@ -44,10 +45,9 @@ export const ClientPortal = () => {
 
   const showToast = (msg) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 4500);
+    setTimeout(() => setToastMessage(null), 3500);
   };
 
-  // Handle incoming real-time WebSocket events from backend
   useEffect(() => {
     if (lastEvent?.type === 'document_processed') {
       const doc = lastEvent.data;
@@ -56,36 +56,29 @@ export const ClientPortal = () => {
         return [doc, ...filtered];
       });
 
-      // Update checklist item
       setChecklist((prev) =>
         prev.map((item) =>
-          item.id === doc.doc_type
-            ? { ...item, status: doc.status }
-            : item
+          item.id === doc.doc_type ? { ...item, status: doc.status } : item
         )
       );
 
       if (doc.status === 'flagged') {
         setAppStage('document_audit');
-        showToast(`?? ${doc.doc_type.toUpperCase()} flagged for Consultant review.`);
+        showToast(`Document ${doc.doc_type} flagged for consular verification.`);
       } else {
-        showToast(`? ${doc.doc_type.toUpperCase()} successfully verified.`);
+        showToast(`Document ${doc.doc_type} verified successfully.`);
       }
     } else if (lastEvent?.type === 'staff_action') {
       const action = lastEvent.data;
       if (action.client_message) {
         setMessages((prev) => [
           ...prev,
-          {
-            role: 'assistant',
-            content: `?? Consultant Verification: ${action.client_message}`
-          }
+          { role: 'assistant', content: `Consular Update: ${action.client_message}` }
         ]);
-        showToast(`Consultant Action: ${action.client_message}`);
+        showToast(action.client_message);
       }
       if (action.updated_stage === 'ready_for_submission' || action.updated_stage === 'submitted') {
         setAppStage(action.updated_stage);
-        // Load flights automatically
         loadSampleFlights();
       }
     }
@@ -100,9 +93,9 @@ export const ClientPortal = () => {
         route: 'LOS (Lagos) ? LHR (London Heathrow)',
         departure: '2026-11-15T22:30:00Z',
         arrival: '2026-11-16T05:15:00Z',
-        cabin: 'Club World / Economy',
+        cabin: 'Economy',
         price_ngn: 1850000,
-        baggage: '2 ? 23kg standard corporate allowance',
+        baggage: '2 ? 23kg corporate allowance',
         stops: 0
       },
       {
@@ -114,13 +107,12 @@ export const ClientPortal = () => {
         arrival: '2026-11-16T17:00:00Z',
         cabin: 'Economy Delight',
         price_ngn: 1795000,
-        baggage: '2 ? 23kg standard corporate allowance',
+        baggage: '2 ? 23kg corporate allowance',
         stops: 0
       }
     ]);
   };
 
-  // Send Chat Message
   const handleSendMessage = async (text) => {
     const userMsg = { role: 'user', content: text };
     setMessages((prev) => [...prev, userMsg]);
@@ -134,27 +126,21 @@ export const ClientPortal = () => {
       }
       if (res.extracted_intent) setAppData(res.extracted_intent);
       if (res.checklist) setChecklist(res.checklist);
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: res.reply }
-      ]);
+      setMessages((prev) => [...prev, { role: 'assistant', content: res.reply }]);
     } catch (err) {
-      // High-fidelity fallback for offline demo resilience
       setTimeout(() => {
-        const reply = "Congratulations on the Bloomberg LP offer in London! For your UK Skilled Worker visa, UKVI mandates verifying your identity, certificate of sponsorship, TB medical clearance, and financial maintenance. I've configured your live checklist below. Please upload your documents to trigger automated OCR and compliance auditing.";
+        const reply = "Offer with Bloomberg LP in London confirmed. For your UK Skilled Worker visa, UKVI mandates verifying your identity, Certificate of Sponsorship, TB medical clearance, and financial maintenance. I've configured your evidential checklist. Please upload your documents for automated compliance verification.";
         setMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
-      }, 500);
+      }, 400);
     } finally {
       setLoadingChat(false);
     }
   };
 
-  // Upload Document with dynamic mock feedback
   const handleUpload = async (docType, file) => {
     try {
       await apiService.uploadDocument(applicationId, docType, file);
     } catch (err) {
-      // Realistic simulation for immediate visual demo
       setTimeout(() => {
         let fallbackDoc;
         if (docType === 'passport') {
@@ -163,45 +149,25 @@ export const ClientPortal = () => {
             application_id: applicationId,
             doc_type: 'passport',
             status: 'flagged',
-            ai_confidence: 0.96,
+            ai_confidence: 0.98,
             original_filename: file.name,
-            extracted_data: {
-              full_name: 'Tunde Babatunde Adeyemi',
-              passport_number: 'A12345678',
-              nationality: 'Nigerian',
-              expiry_date: '2027-02-14',
-              issuing_authority: 'NIS Abuja'
-            },
-            issues: [
-              {
-                rule: 'passport_validity_period',
-                document: 'passport',
-                detail: 'Passport expires on 2027-02-14, which has less than 6 months validity from intended travel date.',
-                severity: 'critical'
-              }
-            ]
+            extracted_data: { full_name: 'Tunde Babatunde Adeyemi', passport_number: 'A12345678', nationality: 'Nigerian', expiry_date: '2027-02-14' },
+            issues: [{ rule: 'passport_validity_period', document: 'passport', detail: 'Passport expires within 6 months of departure date.' }]
           };
           setAppStage('document_audit');
-          showToast('?? Passport flagged for 6-month validity rule check');
+          showToast('Passport flagged: 6-month validity check required');
         } else if (docType === 'cos') {
           fallbackDoc = {
             document_id: 'doc_' + Date.now(),
             application_id: applicationId,
             doc_type: 'cos',
             status: 'passed',
-            ai_confidence: 0.98,
+            ai_confidence: 0.99,
             original_filename: file.name,
-            extracted_data: {
-              sponsor_name: 'Bloomberg LP',
-              cos_number: 'WAC2671049281',
-              job_title: 'Senior Software Engineer',
-              salary_gbp: 85000,
-              cos_status: 'ACTIVE',
-              maintenance_certified: true
-            },
+            extracted_data: { sponsor_name: 'Bloomberg LP', cos_number: 'WAC2671049281', salary_gbp: 85000, cos_status: 'ACTIVE', maintenance_certified: true },
             issues: []
           };
-          showToast('? Certificate of Sponsorship verified with Tier-A Rating');
+          showToast('Certificate of Sponsorship verified (Active Tier-A)');
         } else if (docType === 'bank_statement') {
           fallbackDoc = {
             document_id: 'doc_' + Date.now(),
@@ -210,15 +176,10 @@ export const ClientPortal = () => {
             status: 'passed',
             ai_confidence: 0.94,
             original_filename: file.name,
-            extracted_data: {
-              bank_name: 'First Bank of Nigeria',
-              account_name: 'Tunde B. Adeyemi',
-              closing_balance_ngn: 14500000,
-              continuous_28_days_passed: true
-            },
+            extracted_data: { bank_name: 'First Bank of Nigeria', closing_balance_ngn: 14500000 },
             issues: []
           };
-          showToast('? 28-day maintenance funds threshold verified (?14.5M)');
+          showToast('28-day financial statement verified (?14.5M)');
         } else {
           fallbackDoc = {
             document_id: 'doc_' + Date.now(),
@@ -227,89 +188,66 @@ export const ClientPortal = () => {
             status: 'passed',
             ai_confidence: 0.97,
             original_filename: file.name,
-            extracted_data: {
-              issuing_authority: 'IOM Migration Health Assessment Centre, Lagos',
-              test_result: 'Negative (Normal)',
-              certificate_valid: true
-            },
+            extracted_data: { issuing_authority: 'IOM Lagos Clinic', test_result: 'Negative (Normal)' },
             issues: []
           };
-          showToast('? IOM Tuberculosis Medical Certificate cleared');
+          showToast('IOM Tuberculosis clearance verified');
         }
 
         setDocuments((prev) => [fallbackDoc, ...prev.filter((d) => d.doc_type !== docType)]);
         setChecklist((prev) =>
-          prev.map((item) =>
-            item.id === docType ? { ...item, status: fallbackDoc.status } : item
-          )
+          prev.map((item) => item.id === docType ? { ...item, status: fallbackDoc.status } : item)
         );
-      }, 700);
+      }, 500);
     }
   };
-
-  const steps = [
-    { id: 'intake', label: '1. Conversational Intake', active: true, done: true },
-    { id: 'document_audit', label: '2. Vision OCR & Audit', active: appStage === 'document_audit', done: documents.length > 0 },
-    { id: 'ready_for_submission', label: '3. HITL Clearance', active: appStage === 'ready_for_submission', done: appStage === 'ready_for_submission' || appStage === 'submitted' },
-    { id: 'submitted', label: '4. UKVI Submission & Flights', active: appStage === 'submitted', done: appStage === 'submitted' }
-  ];
 
   return (
     <div>
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="toast-banner glass-panel" style={{
-          padding: '12px 24px',
-          background: 'rgba(15, 23, 42, 0.95)',
-          border: '1px solid var(--accent-cyan)',
+        <div className="toast-banner tf-card" style={{
+          padding: '8px 16px',
+          background: 'var(--bg-surface-elevated)',
+          border: '1px solid var(--border-medium)',
+          fontSize: '0.84rem',
           display: 'flex',
           alignItems: 'center',
-          gap: 12
+          gap: 8
         }}>
-          <Sparkles size={18} color="#06b6d4" />
-          <span style={{ fontSize: '0.88rem', fontWeight: 600 }}>{toastMessage}</span>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#3b82f6' }} />
+          <span>{toastMessage}</span>
         </div>
       )}
 
-      {/* Top Workflow Progress Stepper */}
-      <div className="glass-panel" style={{ padding: '16px 24px', marginBottom: 24 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, overflowX: 'auto' }}>
-          {steps.map((st, i) => (
-            <React.Fragment key={st.id}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                <div style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '0.75rem',
-                  fontWeight: 700,
-                  background: st.done ? 'linear-gradient(135deg, #059669 0%, #10b981 100%)' : st.active ? 'linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%)' : 'rgba(255,255,255,0.08)',
-                  color: '#ffffff',
-                  boxShadow: st.active ? '0 0 12px rgba(6, 182, 212, 0.5)' : 'none'
-                }}>
-                  {st.done ? <CheckCircle2 size={16} /> : i + 1}
-                </div>
-                <div>
-                  <div style={{ fontSize: '0.82rem', fontWeight: 700, color: st.active ? '#38bdf8' : st.done ? '#34d399' : 'var(--text-muted)' }}>
-                    {st.label}
-                  </div>
-                </div>
-              </div>
-              {i < steps.length - 1 && (
-                <div style={{ flex: 1, height: 2, background: st.done ? '#10b981' : 'rgba(255,255,255,0.08)', minWidth: 30 }} />
-              )}
-            </React.Fragment>
-          ))}
+      {/* Case Header Bar */}
+      <div className="tf-card" style={{ padding: '12px 18px', marginBottom: 18, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 28, height: 28, borderRadius: 6, background: 'var(--bg-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Building2 size={16} color="#8e94a4" />
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{appData.client_name || 'Tunde Adeyemi'}</span>
+              <span style={{ color: 'var(--text-muted)' }}>?</span>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{appData.employer || 'Bloomberg LP'}</span>
+              <Badge status={appStage} />
+            </div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+              Pathway: UK Skilled Worker (Tier 2 General) ? Destination: London, United Kingdom
+            </div>
+          </div>
         </div>
+
+        <Button variant="secondary" size="sm" onClick={() => setDossierOpen(true)} icon={<FileCheck2 size={13} color="#10b981" />}>
+          View UKVI Dossier
+        </Button>
       </div>
 
-      {/* Main Split Interface */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.05fr 1fr', gap: 24, minHeight: 'calc(100vh - 200px)' }}>
-        {/* Left Column: Multimodal Chat & Checklist */}
-        <div style={{ height: 'calc(100vh - 200px)' }}>
+      {/* Main Split Layout */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.05fr 1fr', gap: 18, minHeight: 'calc(100vh - 180px)' }}>
+        {/* Left Column: Chat Container */}
+        <div style={{ height: 'calc(100vh - 180px)' }}>
           <ChatContainer
             messages={messages}
             checklist={checklist}
@@ -319,31 +257,32 @@ export const ClientPortal = () => {
           />
         </div>
 
-        {/* Right Column: Ingestion, Audit & Flights */}
-        <div style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 200px)', paddingRight: 6 }}>
+        {/* Right Column: Ingestion & Verification Dossier */}
+        <div style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 180px)', paddingRight: 4 }}>
           <UploadZone
             selectedDocType={selectedDocType}
             onTypeChange={setSelectedDocType}
             onUpload={handleUpload}
           />
 
-          {/* Uploaded Documents List */}
           {documents.map((d) => (
             <DocumentCard key={d.document_id || d.id} doc={d} />
           ))}
 
-          {/* Visa Form Auto-Fill Preview */}
           {documents.length > 0 && <VisaSummaryCard appData={appData} />}
 
-          {/* Relocation Flight Logistics */}
           <FlightCards flights={flights} />
 
-          {/* 30-Day Relocation Journey Roadmap */}
           <RelocationTimeline />
-
-          <DossierModal isOpen={dossierOpen} onClose={() => setDossierOpen(false)} appData={appData} documents={documents} />
         </div>
       </div>
+
+      <DossierModal
+        isOpen={dossierOpen}
+        onClose={() => setDossierOpen(false)}
+        appData={appData}
+        documents={documents}
+      />
     </div>
   );
 };
