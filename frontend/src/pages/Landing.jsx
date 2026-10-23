@@ -17,7 +17,8 @@ import {
   Clock, 
   Bot,
   Hotel,
-  AlertCircle
+  AlertCircle,
+  User
 } from 'lucide-react';
 
 export const Landing = () => {
