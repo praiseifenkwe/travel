@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.api import chat, audit, checklist, rules
+from app.api import chat, audit, checklist, rules, trusted_sources, audit_tickets
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -23,13 +23,18 @@ app.include_router(chat.router, prefix="/api")
 app.include_router(audit.router, prefix="/api")
 app.include_router(checklist.router, prefix="/api")
 app.include_router(rules.router, prefix="/api")
+app.include_router(trusted_sources.router, prefix="/api")
+app.include_router(audit_tickets.router, prefix="/api")
 
 
 @app.on_event("startup")
 async def startup_event():
+    from app.core.database import init_db
     from app.services.rag_service import get_collection, get_collection_stats, ingest_document
     from app.services.rule_store import get_active_rules, list_drafts
     from pathlib import Path
+    
+    init_db()  # Create PostgreSQL tables & seed trusted sources
     get_collection()  # Initialise ChromaDB collection on startup
     stats = await get_collection_stats()
     
