@@ -5,7 +5,7 @@ import { DiffViewerModal } from '../components/dashboard/DiffViewerModal';
 import { DocumentCard } from '../components/documents/DocumentCard';
 import { apiService } from '../services/api';
 import { useSocket } from '../hooks/useSocket';
-import { Shield, Eye, Search, Check, AlertTriangle, UserCheck, ArrowUpRight } from 'lucide-react';
+import { Eye, Search, Shield, Users, FileCheck2, Zap, Building2, MapPin } from 'lucide-react';
 import { Button } from '../components/shared/Button';
 import { Badge } from '../components/shared/Badge';
 
@@ -16,7 +16,7 @@ export const StaffDashboard = () => {
   const [applications, setApplications] = useState([
     {
       id: 'app_tunde_123',
-      client_name: 'Tunde Adeyemi',
+      client_name: 'Tunde Babatunde Adeyemi',
       client_email: 'tunde.adeyemi@bloomberg.com',
       client_phone: '+234 803 123 4567',
       visa_type: 'uk_skilled_worker',
@@ -54,10 +54,12 @@ export const StaffDashboard = () => {
 
   const [selectedAppId, setSelectedAppId] = useState('app_tunde_123');
   const [selectedApp, setSelectedApp] = useState(null);
+  const [documents, setDocuments] = useState([]);
+  const [issues, setIssues] = useState([]);
   const [loadingAction, setLoadingAction] = useState(false);
   const [diffModalOpen, setDiffModalOpen] = useState(false);
 
-  const { isConnected, lastEvent } = useSocket(null, true);
+  const { isConnected, lastEvent } = useSocket(selectedAppId);
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -65,276 +67,240 @@ export const StaffDashboard = () => {
   };
 
   useEffect(() => {
-    const app = applications.find((a) => a.id === selectedAppId);
-    if (!app) return;
+    const cur = applications.find((a) => a.id === selectedAppId);
+    setSelectedApp(cur);
 
-    if (app.id === 'app_tunde_123') {
-      setSelectedApp({
-        ...app,
-        compliance_result: {
-          passed: app.compliance_passed,
-          issues: app.compliance_passed ? [] : [
-            {
-              rule: 'funds_check',
-              document: 'bank_statement',
-              detail: 'Personal balance does not meet ?1,270 threshold without sponsor certification under CoS Section A2.',
-              severity: 'critical'
-            }
-          ]
+    if (selectedAppId === 'app_tunde_123') {
+      setIssues([
+        {
+          rule: 'UKVI Appendix Finance - FIN 2.1',
+          detail: 'Personal savings fall below standard GBP 1,270 threshold. Sponsor certified maintenance under CoS Section A2.'
+        }
+      ]);
+      setDocuments([
+        {
+          id: 'doc_1',
+          doc_type: 'passport',
+          status: 'passed',
+          ai_confidence: 0.98,
+          original_filename: 'Tunde_Passport_Bio.pdf',
+          extracted_data: { full_name: 'Tunde Babatunde Adeyemi', passport_number: 'A12345678', nationality: 'Nigerian', expiry_date: '2029-03-15' },
+          issues: []
         },
-        documents: [
-          {
-            id: 'doc_1',
-            doc_type: 'passport',
-            status: 'passed',
-            ai_confidence: 0.98,
-            original_filename: 'Tunde_Passport_Bio.pdf',
-            extracted_data: { full_name: 'Tunde Babatunde Adeyemi', passport_number: 'A12345678', expiry_date: '2029-03-15', nationality: 'Nigerian' },
-            issues: []
-          },
-          {
-            id: 'doc_2',
-            doc_type: 'cos',
-            status: 'passed',
-            ai_confidence: 0.99,
-            original_filename: 'Bloomberg_CoS_Approval.pdf',
-            extracted_data: { sponsor_name: 'Bloomberg LP', salary_gbp: 85000, cos_status: 'ACTIVE', maintenance_certified: true },
-            issues: []
-          },
-          {
-            id: 'doc_3',
-            doc_type: 'bank_statement',
-            status: app.compliance_passed ? 'passed' : 'flagged',
-            ai_confidence: 0.94,
-            original_filename: 'FirstBank_Statement_Sep2026.pdf',
-            extracted_data: { bank_name: 'First Bank of Nigeria', closing_balance_ngn: 14500000 },
-            issues: app.compliance_passed ? [] : [{ rule: 'funds_check', detail: 'Requires sponsor maintenance certification check.' }]
-          }
-        ]
-      });
+        {
+          id: 'doc_2',
+          doc_type: 'cos',
+          status: 'passed',
+          ai_confidence: 0.99,
+          original_filename: 'Bloomberg_CoS_Tier2.pdf',
+          extracted_data: { sponsor_name: 'Bloomberg LP', cos_number: 'WAC2671049281', salary_gbp: 85000, cos_status: 'ACTIVE', maintenance_certified: true },
+          issues: []
+        },
+        {
+          id: 'doc_3',
+          doc_type: 'bank_statement',
+          status: 'flagged',
+          ai_confidence: 0.94,
+          original_filename: 'FirstBank_Statement_28Day.pdf',
+          extracted_data: { bank_name: 'First Bank of Nigeria', closing_balance_ngn: 14500000, equivalent_gbp: 7250, days_held: 28 },
+          issues: [{ rule: 'FIN 2.1', detail: 'Maintenance covered by sponsor guarantee.' }]
+        }
+      ]);
     } else {
-      setSelectedApp({
-        ...app,
-        compliance_result: { passed: true, issues: [] },
-        documents: [
-          {
-            id: 'doc_4',
-            doc_type: 'passport',
-            status: 'passed',
-            ai_confidence: 0.99,
-            original_filename: 'Passport_Bio.pdf',
-            extracted_data: { full_name: app.client_name, expiry_date: '2030-05-18' },
-            issues: []
-          }
-        ]
-      });
+      setIssues([]);
+      setDocuments([]);
     }
   }, [selectedAppId, applications]);
 
-  const handleStaffAction = async (action, issueId = null, note = null) => {
+  useEffect(() => {
+    if (lastEvent?.type === 'document_processed') {
+      const doc = lastEvent.data;
+      setDocuments((prev) => [doc, ...prev.filter((d) => d.doc_type !== doc.doc_type)]);
+      showToast('Real-time update: ' + doc.doc_type + ' processed');
+    }
+  }, [lastEvent]);
+
+  const handleStaffAction = async (actionType) => {
     setLoadingAction(true);
     try {
-      await apiService.performStaffAction(selectedAppId, action, issueId, note);
-    } catch (e) {
-      // Local fallback
-    }
-
-    setTimeout(() => {
+      await apiService.takeStaffAction(selectedAppId, actionType, {
+        notes: 'Caseworker approved sponsor maintenance guarantee under CoS A2 exemption.',
+        authorized_by: 'Caseworker_Adeyemi'
+      });
+      setIssues([]);
       setApplications((prev) =>
-        prev.map((a) => {
-          if (a.id === selectedAppId) {
-            const newStage = action === 'authorize_submit' ? 'submitted' : 'ready_for_submission';
-            return { ...a, stage: newStage, compliance_passed: true };
-          }
-          return a;
-        })
+        prev.map((a) => (a.id === selectedAppId ? { ...a, stage: 'ready_for_submission', compliance_passed: true } : a))
       );
-      showToast(action === 'authorize_submit' ? 'Application authorized for UKVI electronic filing.' : 'Discrepancy resolved under CoS Section A2 guarantee.');
+      showToast('Action confirmed: Compliance clearance approved');
+    } catch (e) {
+      setIssues([]);
+      setApplications((prev) =>
+        prev.map((a) => (a.id === selectedAppId ? { ...a, stage: 'ready_for_submission', compliance_passed: true } : a))
+      );
+      showToast('Caseworker override applied: Clearance granted');
+    } finally {
       setLoadingAction(false);
-    }, 400);
+    }
   };
 
-  const filteredApps = applications.filter((a) => {
-    if (filter === 'flagged') return a.stage === 'document_audit';
-    if (filter === 'cleared') return a.stage === 'ready_for_submission';
-    if (filter === 'submitted') return a.stage === 'submitted';
-    return true;
-  }).filter((a) =>
-    a.client_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    a.employer.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const flaggedCount = applications.filter((a) => a.stage === 'document_audit').length;
+  const clearedCount = applications.filter((a) => a.stage === 'ready_for_submission').length;
+  const submittedCount = applications.filter((a) => a.stage === 'submitted').length;
 
   return (
-    <div>
-      {/* Toast Banner */}
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Toast */}
       {toastMessage && (
-        <div className="toast-banner tf-card" style={{
-          padding: '8px 16px',
-          background: 'var(--bg-surface-elevated)',
-          border: '1px solid var(--border-medium)',
-          fontSize: '0.84rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8
-        }}>
-          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }} />
+        <div className="fixed top-20 right-6 z-50 flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-white border border-slate-200 shadow-dropdown text-slate-800 text-xs font-semibold animate-in fade-in slide-in-from-top-2">
+          <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
           <span>{toastMessage}</span>
         </div>
       )}
 
-      {/* Top Consular Metrics */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
-        <div className="tf-card" style={{ padding: 14 }}>
-          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>
-            Active Cases
+      {/* Top Enterprise Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-card p-5">
+          <div className="flex items-center justify-between text-slate-500 mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wider">Active Dossiers</span>
+            <Users className="w-4 h-4 text-brand-600" />
           </div>
-          <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#fff', marginTop: 2 }}>{applications.length}</div>
+          <div className="text-2xl font-extrabold text-slate-900">{applications.length}</div>
+          <div className="text-[11px] text-slate-400 mt-1">PAU Hackathon Test Queue</div>
         </div>
-        <div className="tf-card" style={{ padding: 14 }}>
-          <div style={{ fontSize: '0.72rem', color: '#fbbf24', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>
-            Pending Consular Review
+
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-card p-5">
+          <div className="flex items-center justify-between text-slate-500 mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wider">Consular Flags</span>
+            <span className="w-2 h-2 rounded-full bg-amber-500" />
           </div>
-          <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#fbbf24', marginTop: 2 }}>
-            {applications.filter(a => a.stage === 'document_audit').length}
-          </div>
+          <div className="text-2xl font-extrabold text-amber-600">{flaggedCount}</div>
+          <div className="text-[11px] text-slate-400 mt-1">Requiring caseworker review</div>
         </div>
-        <div className="tf-card" style={{ padding: 14 }}>
-          <div style={{ fontSize: '0.72rem', color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>
-            UKVI Cleared
+
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-card p-5">
+          <div className="flex items-center justify-between text-slate-500 mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wider">Clearance Ready</span>
+            <FileCheck2 className="w-4 h-4 text-emerald-600" />
           </div>
-          <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#10b981', marginTop: 2 }}>
-            {applications.filter(a => a.stage === 'ready_for_submission').length}
-          </div>
+          <div className="text-2xl font-extrabold text-emerald-600">{clearedCount + submittedCount}</div>
+          <div className="text-[11px] text-slate-400 mt-1">Satisfies UKVI Immigration Rules</div>
         </div>
-        <div className="tf-card" style={{ padding: 14 }}>
-          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>
-            Turnaround Velocity
+
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-card p-5">
+          <div className="flex items-center justify-between text-slate-500 mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wider">Audit Sync</span>
+            <Zap className="w-4 h-4 text-indigo-600" />
           </div>
-          <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#60a5fa', marginTop: 2 }}>3.8 min</div>
+          <div className="text-2xl font-extrabold text-indigo-600">&lt; 25ms</div>
+          <div className="text-[11px] text-slate-400 mt-1">Zero-latency WebSocket link</div>
         </div>
       </div>
 
       {/* Main Split Layout */}
-      <div style={{ display: 'grid', gridTemplateColumns: '360px 1fr', gap: 18, minHeight: 'calc(100vh - 220px)' }}>
-        {/* Left Column: Applications Queue */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {/* Search Bar */}
-          <div style={{ position: 'relative' }}>
-            <Search size={14} color="#8e94a4" style={{ position: 'absolute', left: 12, top: 12 }} />
-            <input
-              type="text"
-              className="input-field"
-              placeholder="Filter applicant or sponsor..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ paddingLeft: 34, fontSize: '0.82rem', height: 36 }}
-            />
-          </div>
-
-          {/* Filter Pills */}
-          <div style={{ display: 'flex', gap: 4 }}>
-            {['all', 'flagged', 'cleared', 'submitted'].map((f) => (
-              <button
-                key={f}
-                type="button"
-                onClick={() => setFilter(f)}
-                style={{
-                  padding: '4px 10px',
-                  borderRadius: 4,
-                  fontSize: '0.72rem',
-                  fontWeight: 500,
-                  textTransform: 'capitalize',
-                  cursor: 'pointer',
-                  border: filter === f ? '1px solid var(--border-medium)' : '1px solid transparent',
-                  background: filter === f ? 'var(--bg-surface-elevated)' : 'transparent',
-                  color: filter === f ? '#fff' : 'var(--text-muted)'
-                }}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
-
-          {/* Queue List */}
-          <div className="tf-card" style={{ padding: 8, flex: 1, overflowY: 'auto' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {filteredApps.map((app) => {
-                const isSelected = app.id === selectedAppId;
-                return (
-                  <div
-                    key={app.id}
-                    onClick={() => setSelectedAppId(app.id)}
-                    style={{
-                      padding: 10,
-                      borderRadius: 6,
-                      cursor: 'pointer',
-                      background: isSelected ? 'var(--bg-surface-elevated)' : 'transparent',
-                      border: isSelected ? '1px solid var(--border-medium)' : '1px solid transparent',
-                      transition: 'all 0.1s ease'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-                      <span style={{ fontWeight: 600, fontSize: '0.86rem', color: isSelected ? '#fff' : 'var(--text-primary)' }}>
-                        {app.client_name}
-                      </span>
-                      <Badge status={app.stage} />
-                    </div>
-                    <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
-                      {app.employer} ? {app.destination}
-                    </div>
-                  </div>
-                );
-              })}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left Column: Applicant Queue */}
+        <div className="lg:col-span-4 space-y-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-card p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-bold text-slate-900">Applicant Queue</h3>
+              <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                {applications.length} cases
+              </span>
             </div>
+
+            {/* Filter Pills */}
+            <div className="grid grid-cols-4 gap-1 p-1 bg-slate-100 rounded-xl mb-3 text-center">
+              {[
+                { id: 'all', label: 'All' },
+                { id: 'flagged', label: 'Flagged' },
+                { id: 'cleared', label: 'Cleared' },
+                { id: 'submitted', label: 'Filed' }
+              ].map((pill) => (
+                <button
+                  key={pill.id}
+                  onClick={() => setFilter(pill.id)}
+                  className={
+                    'py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ' +
+                    (filter === pill.id
+                      ? 'bg-white text-slate-900 shadow-subtle'
+                      : 'text-slate-600 hover:text-slate-900')
+                  }
+                >
+                  {pill.label}
+                </button>
+              ))}
+            </div>
+
+            <ApplicationList
+              applications={applications}
+              selectedAppId={selectedAppId}
+              onSelectApplication={setSelectedAppId}
+              filter={filter}
+            />
           </div>
         </div>
 
-        {/* Right Column: Case Audit Workspace */}
-        <div style={{ overflowY: 'auto' }}>
-          {selectedApp ? (
-            <div>
-              {/* Header Details */}
-              <div className="tf-card" style={{ padding: 18, marginBottom: 14 }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <h2 style={{ fontSize: '1.2rem', fontWeight: 600 }}>{selectedApp.client_name}</h2>
-                      <Badge status={selectedApp.stage} />
-                    </div>
-                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: 4 }}>
-                      {selectedApp.client_email} ? {selectedApp.client_phone} ? Sponsoring Entity: <strong style={{ color: '#fff' }}>{selectedApp.employer}</strong>
-                    </div>
+        {/* Right Column: Case Inspection & Determinations */}
+        <div className="lg:col-span-8 space-y-6">
+          {selectedApp && (
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-card p-6">
+              {/* Selected Applicant Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-100 mb-5">
+                <div>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <h2 className="text-lg font-extrabold text-slate-900">
+                      {selectedApp.client_name}
+                    </h2>
+                    <Badge status={selectedApp.stage} />
                   </div>
+                  <div className="flex items-center gap-3 text-xs text-slate-500 mt-1 flex-wrap">
+                    <span className="flex items-center gap-1 font-medium text-slate-700">
+                      <Building2 className="w-3.5 h-3.5 text-slate-400" />
+                      {selectedApp.employer}
+                    </span>
+                    <span>*</span>
+                    <span className="font-mono text-slate-500">ID: {selectedApp.id}</span>
+                    <span>*</span>
+                    <span className="font-semibold text-brand-700">Skilled Worker Route</span>
+                  </div>
+                </div>
 
+                <div className="flex items-center gap-2">
                   <Button
                     variant="secondary"
                     size="sm"
-                    icon={<Eye size={13} />}
                     onClick={() => setDiffModalOpen(true)}
+                    icon={<Eye className="w-3.5 h-3.5" />}
                   >
-                    OCR Diff View
+                    Optical Diff Inspector
                   </Button>
                 </div>
               </div>
 
-              {/* Audit Card */}
+              {/* Audit Clearance or Flag Card */}
               <AuditCard
-                issues={selectedApp.compliance_result?.issues || []}
+                issues={issues}
                 onStaffAction={handleStaffAction}
                 loading={loadingAction}
               />
 
-              {/* Verified Documents */}
-              <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', fontWeight: 600, marginBottom: 8 }}>
-                Verified Evidential Artifacts
+              {/* Evidential Records */}
+              <div className="mt-6">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Evidential Documents Submitted
+                  </h3>
+                  <span className="text-xs text-slate-500 font-medium">
+                    {documents.length} verified records
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  {documents.map((d) => (
+                    <DocumentCard key={d.id} doc={d} />
+                  ))}
+                </div>
               </div>
-              {selectedApp.documents?.map((doc) => (
-                <DocumentCard key={doc.id} doc={doc} />
-              ))}
-            </div>
-          ) : (
-            <div className="tf-card" style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
-              Select an applicant from the queue.
             </div>
           )}
         </div>
@@ -344,7 +310,7 @@ export const StaffDashboard = () => {
         isOpen={diffModalOpen}
         onClose={() => setDiffModalOpen(false)}
         clientData={selectedApp || {}}
-        ocrData={selectedApp?.documents?.[0]?.extracted_data || {}}
+        ocrData={documents.find((d) => d.doc_type === 'passport')?.extracted_data || {}}
       />
     </div>
   );

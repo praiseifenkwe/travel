@@ -14,65 +14,64 @@ export const DiffViewerModal = ({ isOpen, onClose, clientData = {}, ocrData = {}
   ];
 
   return (
-    <div style={{
-      position: 'fixed',
-      inset: 0,
-      background: 'rgba(0, 0, 0, 0.75)',
-      backdropFilter: 'blur(4px)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 300,
-      padding: 20
-    }}>
-      <div className="tf-card" style={{ width: '100%', maxWidth: 640, padding: 22, position: 'relative', background: '#0e1017' }}>
+    <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-dropdown max-w-2xl w-full p-6 relative animate-in fade-in zoom-in-95">
         <button
           onClick={onClose}
-          style={{ position: 'absolute', top: 16, right: 16, background: 'transparent', border: 'none', color: '#8e94a4', cursor: 'pointer' }}
+          className="absolute top-5 right-5 p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
         >
-          <X size={18} />
+          <X className="w-5 h-5" />
         </button>
 
-        <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 2 }}>
-          Optical Diff Verification (Applicant vs Machine Extraction)
+        <h3 className="text-lg font-bold text-slate-900 mb-1">
+          Optical Diff Verification
         </h3>
-        <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginBottom: 16 }}>
+        <p className="text-xs text-slate-500 mb-5">
           Side-by-side reconciliation between applicant intake declaration and passport biometric data
         </p>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 18 }}>
-          {fields.map((f, i) => {
-            const isMatch = f.client.toLowerCase() === f.ocr.toLowerCase();
-            return (
-              <div
-                key={i}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1.2fr 2fr 2fr 0.4fr',
-                  gap: 10,
-                  alignItems: 'center',
-                  padding: '8px 12px',
-                  borderRadius: 6,
-                  background: isMatch ? 'var(--bg-subtle)' : 'var(--warning-subtle)',
-                  border: isMatch ? '1px solid var(--border-subtle)' : '1px solid var(--warning-border)',
-                  fontSize: '0.78rem'
-                }}
-              >
-                <div style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{f.label}</div>
-                <div style={{ color: 'var(--text-secondary)' }}>{f.client}</div>
-                <div style={{ fontWeight: 600, color: isMatch ? '#34d399' : '#fbbf24' }}>{f.ocr}</div>
-                <div>{isMatch ? <Check size={14} color="#34d399" /> : <AlertTriangle size={14} color="#fbbf24" />}</div>
-              </div>
-            );
-          })}
+        <div className="overflow-hidden rounded-xl border border-slate-200 mb-6">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-50 border-b border-slate-200 font-bold text-slate-500 uppercase tracking-wider text-[11px]">
+              <tr>
+                <th className="p-3">Field Attribute</th>
+                <th className="p-3">Client Declared</th>
+                <th className="p-3">OCR Biometric Extracted</th>
+                <th className="p-3 text-right">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {fields.map((f, i) => {
+                const isMatch = f.client.toLowerCase() === f.ocr.toLowerCase() || f.ocr.includes(f.client);
+                return (
+                  <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="p-3 font-semibold text-slate-800">{f.label}</td>
+                    <td className="p-3 text-slate-600">{f.client}</td>
+                    <td className="p-3 font-mono text-slate-900 font-medium">{f.ocr}</td>
+                    <td className="p-3 text-right">
+                      {isMatch ? (
+                        <span className="inline-flex items-center gap-1 text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                          <Check className="w-3 h-3 text-emerald-600" /> Match
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                          <AlertTriangle className="w-3 h-3 text-amber-600" /> Diff
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+        <div className="flex items-center justify-end gap-2.5">
           <Button variant="secondary" size="sm" onClick={onClose}>
-            Close
+            Close Inspector
           </Button>
           <Button variant="primary" size="sm" onClick={onClose}>
-            Acknowledge & Reconcile
+            Accept Bio Variance & Clear
           </Button>
         </div>
       </div>

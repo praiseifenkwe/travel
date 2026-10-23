@@ -1,64 +1,89 @@
 import React from 'react';
-import { Calendar, CheckCircle2 } from 'lucide-react';
+import { Calendar, CheckCircle2, Clock, MapPin, Building2, Plane, Sparkles } from 'lucide-react';
 
 export const RelocationTimeline = () => {
-  const events = [
-    { day: 'Day 1', title: 'Automated Intake & Evidence Audit', desc: 'NLU slot-filling & OCR extracts passport, CoS, and 28-day bank balance.', status: 'completed', date: 'Oct 23, 2026' },
-    { day: 'Day 3', title: 'Consular Review & CoS Clearance', desc: 'Licensed consultant reconciles maintenance under CoS Section A2 guarantee.', status: 'completed', date: 'Oct 25, 2026' },
-    { day: 'Day 7', title: 'TLScontact Biometrics Enrollment', desc: 'Biometric enrollment at TLScontact Victoria Island, Lagos.', status: 'current', date: 'Nov 2, 2026' },
-    { day: 'Day 16', title: 'UKVI Visa Vignette Issuance', desc: '3-Year Skilled Worker vignette affixed to passport and dispatched via courier.', status: 'upcoming', date: 'Nov 11, 2026' },
-    { day: 'Day 21', title: 'Relocation Flight (LOS ? LHR)', desc: 'British Airways direct flight from Lagos Murtala Muhammed to London Heathrow.', status: 'upcoming', date: 'Nov 15, 2026' },
-    { day: 'Day 22', title: 'Canary Wharf Move-In', desc: 'Check-in to 2-week Bloomberg sponsored corporate apartment in Canary Wharf.', status: 'upcoming', date: 'Nov 16, 2026' }
+  const steps = [
+    {
+      title: 'Document OCR & Rules Engine Check',
+      desc: 'Verify Passport, CoS, Bank Statement & TB Certificate',
+      date: 'Oct 23, 2026',
+      status: 'completed'
+    },
+    {
+      title: 'Agency Staff Consular Sign-Off',
+      desc: 'Legal caseworker approval & Section 320 discrepancy clearance',
+      date: 'Oct 24, 2026',
+      status: 'current'
+    },
+    {
+      title: 'TLScontact Biometrics Appointment',
+      desc: 'Enrol fingerprints & facial bio at Victoria Island, Lagos',
+      date: 'Nov 02, 2026',
+      status: 'upcoming'
+    },
+    {
+      title: 'UKVI Electronic Decision Issued',
+      desc: '3-5 business days expedited priority visa issuance',
+      date: 'Nov 07, 2026',
+      status: 'upcoming'
+    },
+    {
+      title: 'Corporate Flight Departure',
+      desc: 'LOS -> LHR British Airways BA074 (Corporate Relocation Tier)',
+      date: 'Nov 14, 2026',
+      status: 'upcoming'
+    }
   ];
 
   return (
-    <div className="tf-card" style={{ padding: 18, marginBottom: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-card p-5 mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div>
-          <div style={{ fontSize: '0.86rem', fontWeight: 600 }}>Relocation Milestone Schedule</div>
-          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Estimated journey from Lagos intake to London move-in</div>
+          <h3 className="text-sm font-bold text-slate-900">30-Day Relocation Roadmap</h3>
+          <p className="text-xs text-slate-500">Synchronized across UKVI consular dates and flight holds</p>
         </div>
-        <span className="badge badge-passed">On Track</span>
+        <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-brand-50 text-brand-700 border border-brand-200">
+          Schedule On Track
+        </span>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, position: 'relative', paddingLeft: 8 }}>
-        <div style={{ position: 'absolute', left: 14, top: 8, bottom: 8, width: 1, background: 'var(--border-medium)' }} />
-
-        {events.map((ev, i) => {
-          const isDone = ev.status === 'completed';
-          const isCurrent = ev.status === 'current';
+      <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-slate-200">
+        {steps.map((step, idx) => {
+          const isDone = step.status === 'completed';
+          const isCurrent = step.status === 'current';
 
           return (
-            <div key={i} style={{ display: 'flex', gap: 12, position: 'relative', zIndex: 1 }}>
-              <div style={{
-                width: 14,
-                height: 14,
-                borderRadius: '50%',
-                background: isDone ? '#10b981' : isCurrent ? '#3b82f6' : '#232533',
-                border: isCurrent ? '2px solid rgba(59, 130, 246, 0.4)' : '1px solid var(--border-medium)',
-                flexShrink: 0,
-                marginTop: 3
-              }} />
+            <div key={idx} className="relative flex items-start gap-3.5">
+              <div className={
+                'absolute -left-6 top-0.5 w-5 h-5 rounded-full flex items-center justify-center ring-4 ring-white ' +
+                (isDone
+                  ? 'bg-emerald-600 text-white'
+                  : isCurrent
+                  ? 'bg-brand-600 text-white animate-pulse'
+                  : 'bg-slate-200 text-slate-500')
+              }>
+                {isDone ? (
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                ) : (
+                  <span className="text-[10px] font-bold">{idx + 1}</span>
+                )}
+              </div>
 
-              <div style={{
-                flex: 1,
-                background: isCurrent ? 'var(--bg-surface-elevated)' : 'var(--bg-subtle)',
-                border: isCurrent ? '1px solid var(--border-medium)' : '1px solid var(--border-subtle)',
-                padding: '8px 12px',
-                borderRadius: 6
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span className="mono" style={{ fontSize: '0.7rem', color: isCurrent ? '#60a5fa' : isDone ? '#10b981' : 'var(--text-muted)', fontWeight: 600 }}>
-                      {ev.day}
-                    </span>
-                    <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#fff' }}>{ev.title}</span>
-                  </div>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{ev.date}</span>
+              <div className="flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className={
+                    'text-xs font-bold ' +
+                    (isCurrent ? 'text-brand-700' : 'text-slate-900')
+                  }>
+                    {step.title}
+                  </span>
+                  <span className="text-[11px] font-medium text-slate-400 shrink-0 font-mono">
+                    {step.date}
+                  </span>
                 </div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                  {ev.desc}
-                </div>
+                <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                  {step.desc}
+                </p>
               </div>
             </div>
           );

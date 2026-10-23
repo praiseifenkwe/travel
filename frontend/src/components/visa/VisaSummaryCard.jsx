@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, CheckCircle2, Shield } from 'lucide-react';
+import { Calendar, CheckCircle2, Shield, Clock, MapPin, Building2, CreditCard } from 'lucide-react';
 import { Button } from '../shared/Button';
 
 export const VisaSummaryCard = ({ appData = {} }) => {
@@ -9,82 +9,89 @@ export const VisaSummaryCard = ({ appData = {} }) => {
   const biometricSlots = [
     { id: 'slot_1', date: 'Monday, Nov 2, 2026', time: '09:30 AM', location: 'TLScontact Victoria Island, Lagos' },
     { id: 'slot_2', date: 'Tuesday, Nov 3, 2026', time: '11:00 AM', location: 'TLScontact Victoria Island, Lagos' },
-    { id: 'slot_3', date: 'Thursday, Nov 5, 2026', time: '02:15 PM', location: 'TLScontact Abuja Central' }
+    { id: 'slot_3', date: 'Thursday, Nov 5, 2026', time: '02:15 PM', location: 'TLScontact Central, Abuja' }
   ];
 
   return (
-    <div className="tf-card" style={{ padding: 18, marginBottom: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-card p-5 mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div>
-          <div style={{ fontSize: '0.86rem', fontWeight: 600 }}>UKVI Application Form Summary</div>
-          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Pre-populated from OCR evidence and sponsor CoS</div>
+          <h3 className="text-sm font-bold text-slate-900">UKVI Form Auto-Fill Preview</h3>
+          <p className="text-xs text-slate-500">Synthesized from OCR evidence and sponsor CoS</p>
         </div>
-        <span className="badge badge-passed">Ready For Filing</span>
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+          Ready For Filing
+        </span>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, fontSize: '0.78rem', marginBottom: 14 }}>
-        <div style={{ background: 'var(--bg-subtle)', padding: 10, borderRadius: 6, border: '1px solid var(--border-subtle)' }}>
-          <span style={{ color: 'var(--text-muted)' }}>Route Category:</span>
-          <div style={{ fontWeight: 600, color: '#fff', marginTop: 1 }}>Skilled Worker (Tier 2 General)</div>
+      <div className="grid grid-cols-2 gap-3 text-xs mb-5">
+        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+          <span className="text-slate-500 text-[11px] font-medium">Route Category</span>
+          <div className="font-bold text-slate-900 text-sm mt-0.5">Skilled Worker (Tier 2)</div>
         </div>
-        <div style={{ background: 'var(--bg-subtle)', padding: 10, borderRadius: 6, border: '1px solid var(--border-subtle)' }}>
-          <span style={{ color: 'var(--text-muted)' }}>Sponsoring Body:</span>
-          <div style={{ fontWeight: 600, color: '#fff', marginTop: 1 }}>{appData.employer || 'Bloomberg LP'}</div>
+        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+          <span className="text-slate-500 text-[11px] font-medium">Sponsoring Body</span>
+          <div className="font-bold text-slate-900 text-sm mt-0.5">{appData.employer || 'Bloomberg LP'}</div>
         </div>
-        <div style={{ background: 'var(--bg-subtle)', padding: 10, borderRadius: 6, border: '1px solid var(--border-subtle)' }}>
-          <span style={{ color: 'var(--text-muted)' }}>Immigration Health Surcharge (IHS):</span>
-          <div style={{ fontWeight: 600, color: '#60a5fa', marginTop: 1 }}>?3,105 (3-Year NHS Surcharge)</div>
+        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+          <span className="text-slate-500 text-[11px] font-medium">IHS Surcharge (3-Year)</span>
+          <div className="font-bold text-brand-700 text-sm mt-0.5">£3,105 (NHS Coverage)</div>
         </div>
-        <div style={{ background: 'var(--bg-subtle)', padding: 10, borderRadius: 6, border: '1px solid var(--border-subtle)' }}>
-          <span style={{ color: 'var(--text-muted)' }}>Maintenance Guarantee:</span>
-          <div style={{ fontWeight: 600, color: '#10b981', marginTop: 1 }}>Section A2 Certified by Sponsor</div>
+        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+          <span className="text-slate-500 text-[11px] font-medium">Maintenance Guarantee</span>
+          <div className="font-bold text-emerald-700 text-sm mt-0.5">Certified by Sponsor (CoS A2)</div>
         </div>
       </div>
 
-      {/* Biometrics */}
-      <div style={{ background: 'var(--bg-subtle)', padding: 12, borderRadius: 6, border: '1px solid var(--border-subtle)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-          <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#fff' }}>TLScontact Biometrics Appointment</span>
-          <span style={{ fontSize: '0.72rem', color: slotConfirmed ? '#10b981' : 'var(--text-muted)' }}>
-            {slotConfirmed ? '? Slot Reserved' : 'Select preferred date'}
+      {/* TLScontact Biometrics Slot Picker */}
+      <div className="border-t border-slate-200 pt-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-brand-600" />
+            <span className="text-xs font-bold text-slate-900">TLScontact Biometrics Appointment</span>
+          </div>
+          <span className="text-[11px] font-semibold text-brand-600 bg-brand-50 px-2 py-0.5 rounded-md">
+            Priority Visa Fast-Track
           </span>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginBottom: 10 }}>
-          {biometricSlots.map((slot) => (
-            <button
-              key={slot.id}
-              type="button"
-              disabled={slotConfirmed}
-              onClick={() => setSelectedSlot(slot.id)}
-              style={{
-                padding: '8px',
-                borderRadius: 4,
-                border: selectedSlot === slot.id ? '1px solid #3b82f6' : '1px solid var(--border-subtle)',
-                background: selectedSlot === slot.id ? 'var(--bg-surface-elevated)' : 'transparent',
-                color: '#fff',
-                cursor: slotConfirmed ? 'default' : 'pointer',
-                textAlign: 'left'
-              }}
-            >
-              <div style={{ fontSize: '0.75rem', fontWeight: 600 }}>{slot.date}</div>
-              <div style={{ fontSize: '0.7rem', color: '#60a5fa' }}>{slot.time}</div>
-              <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{slot.location}</div>
-            </button>
-          ))}
+        <div className="space-y-2 mb-4">
+          {biometricSlots.map((slot) => {
+            const isSelected = selectedSlot === slot.id;
+            return (
+              <div
+                key={slot.id}
+                onClick={() => setSelectedSlot(slot.id)}
+                className="p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between "
+              >
+                <div>
+                  <div className="text-xs font-bold text-slate-900">{slot.date} • {slot.time}</div>
+                  <div className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
+                    <MapPin className="w-3 h-3 text-slate-400" />
+                    {slot.location}
+                  </div>
+                </div>
+                <input
+                  type="radio"
+                  name="biometric_slot"
+                  checked={isSelected}
+                  onChange={() => setSelectedSlot(slot.id)}
+                  className="text-brand-600 focus:ring-brand-500"
+                />
+              </div>
+            );
+          })}
         </div>
 
-        {!slotConfirmed ? (
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <Button variant="primary" size="sm" onClick={() => setSlotConfirmed(true)} icon={<CheckCircle2 size={13} />}>
-              Reserve Slot
-            </Button>
-          </div>
-        ) : (
-          <div style={{ fontSize: '0.75rem', color: '#10b981' }}>
-            ? Biometrics confirmation sent to client email. TLS Premium Lounge booked.
-          </div>
-        )}
+        <Button
+          variant={slotConfirmed ? 'success' : 'primary'}
+          size="sm"
+          className="w-full"
+          onClick={() => setSlotConfirmed(true)}
+        >
+          {slotConfirmed ? 'Biometrics Slot Reserved ✓' : 'Confirm TLScontact Appointment'}
+        </Button>
       </div>
     </div>
   );

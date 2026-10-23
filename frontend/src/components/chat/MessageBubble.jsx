@@ -1,45 +1,20 @@
 import React from 'react';
+import { Bot, User } from 'lucide-react';
 
 export const MessageBubble = ({ message }) => {
   const isBot = message.role === 'assistant';
 
   return (
-    <div style={{
-      display: 'flex',
-      gap: 12,
-      marginBottom: 14,
-      flexDirection: isBot ? 'row' : 'row-reverse'
-    }}>
-      {/* Subtle Avatar */}
-      <div style={{
-        width: 26,
-        height: 26,
-        borderRadius: 6,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: isBot ? '#1c1f2e' : '#2563eb',
-        border: '1px solid var(--border-medium)',
-        color: '#fff',
-        fontSize: '0.7rem',
-        fontWeight: 600,
-        flexShrink: 0
-      }}>
-        {isBot ? 'AI' : 'YOU'}
+    <div className="lex gap-3 max-w-3xl ">
+      {/* Avatar */}
+      <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-subtle ">
+        {isBot ? <Bot className="w-4 h-4" /> : <User className="w-4 h-4" />}
       </div>
 
       {/* Bubble */}
-      <div style={{
-        maxWidth: '82%',
-        padding: '10px 14px',
-        borderRadius: 8,
-        background: isBot ? 'var(--bg-surface-elevated)' : '#1e3a8a',
-        border: isBot ? '1px solid var(--border-subtle)' : '1px solid rgba(59, 130, 246, 0.4)',
-        color: '#f1f3f9',
-        fontSize: '0.86rem',
-        lineHeight: 1.55
-      }}>
-        {message.content}
+      <div className="
+ounded-2xl px-4 py-3 text-sm leading-relaxed ">
+        <p className="whitespace-pre-wrap">{message.content}</p>
       </div>
     </div>
   );

@@ -1,55 +1,67 @@
 import React from 'react';
-import { User, ChevronRight, AlertCircle, CheckCircle, Clock } from 'lucide-react';
 import { Badge } from '../shared/Badge';
+import { AlertCircle, CheckCircle2, ChevronRight, Building2, MapPin } from 'lucide-react';
 
-export const ApplicationList = ({ applications = [], selectedId, onSelectApp }) => {
+export const ApplicationList = ({
+  applications = [],
+  selectedAppId,
+  onSelectApplication,
+  filter = 'all'
+}) => {
+  const filteredApps = applications.filter((app) => {
+    if (filter === 'all') return true;
+    if (filter === 'flagged') return app.stage === 'document_audit';
+    if (filter === 'cleared') return app.stage === 'ready_for_submission';
+    if (filter === 'submitted') return app.stage === 'submitted';
+    return true;
+  });
+
   return (
-    <div className="glass-panel" style={{ padding: 18, height: '100%' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-        <h4 style={{ fontSize: '0.95rem', fontWeight: 700 }}>Active Relocation Queue</h4>
-        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{applications.length} Cases</span>
-      </div>
+    <div className="space-y-2">
+      {filteredApps.map((app) => {
+        const isSelected = selectedAppId === app.id;
+        const isFlagged = app.stage === 'document_audit';
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto' }}>
-        {applications.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '30px 10px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-            No applications registered yet. Initiate from Client Portal.
-          </div>
-        ) : (
-          applications.map((app) => {
-            const isSelected = app.id === selectedId;
-            return (
-              <div
-                key={app.id}
-                onClick={() => onSelectApp(app.id)}
-                style={{
-                  padding: 14,
-                  borderRadius: 10,
-                  cursor: 'pointer',
-                  background: isSelected ? 'rgba(99, 102, 241, 0.16)' : 'rgba(15, 23, 42, 0.45)',
-                  border: isSelected ? '1px solid var(--accent-indigo)' : '1px solid var(--border-subtle)',
-                  transition: 'all 0.2s ease',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between'
-                }}
-              >
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                    <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{app.client_name}</span>
-                    <Badge status={app.stage} />
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                    {app.employer || 'Independent'} ? {app.destination}
-                  </div>
-                </div>
-
-                <ChevronRight size={18} color={isSelected ? '#818cf8' : '#64748b'} />
+        return (
+          <div
+            key={app.id}
+            onClick={() => onSelectApplication(app.id)}
+            className="p-3.5 rounded-xl border transition-all cursor-pointer "
+          >
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <div className="flex items-center gap-2">
+                {isFlagged ? (
+                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                ) : (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                )}
+                <span className="text-xs font-bold text-slate-900 truncate">
+                  {app.client_name}
+                </span>
               </div>
-            );
-          })
-        )}
-      </div>
+              <Badge status={app.stage} />
+            </div>
+
+            <div className="text-[11px] text-slate-500 flex items-center gap-1.5 truncate">
+              <Building2 className="w-3 h-3 text-slate-400 shrink-0" />
+              <span className="truncate">{app.employer}</span>
+            </div>
+
+            <div className="flex items-center justify-between text-[11px] text-slate-400 mt-2 font-mono">
+              <span>{app.id}</span>
+              <span className="text-brand-600 font-semibold flex items-center gap-0.5">
+                Inspect <ChevronRight className="w-3 h-3" />
+              </span>
+            </div>
+          </div>
+        );
+      })}
+
+      {filteredApps.length === 0 && (
+        <div className="text-center py-8 text-xs text-slate-400">
+          No applications match this filter.
+        </div>
+      )}
     </div>
   );
 };

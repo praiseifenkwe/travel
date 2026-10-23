@@ -10,62 +10,68 @@ export const FlightCards = ({ flights = [] }) => {
   if (!flights || flights.length === 0) return null;
 
   return (
-    <div className="tf-card" style={{ padding: 18, marginBottom: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-card p-5 mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div>
-          <div style={{ fontSize: '0.86rem', fontWeight: 600 }}>Corporate Relocation Flights</div>
-          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Direct GDS inventory with corporate baggage allowance</div>
+          <h3 className="text-sm font-bold text-slate-900">Corporate Relocation Flights</h3>
+          <p className="text-xs text-slate-500">Direct GDS inventory with corporate relocation baggage allowance</p>
         </div>
-        <span className="badge badge-passed">GDS Sync</span>
+        <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+          GDS Inventory Live
+        </span>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div className="space-y-3">
         {flights.map((fl) => {
-          const isBooked = bookedFlight?.id === fl.id;
+          const isBooked = bookedFlight && bookedFlight.id === fl.id;
 
           return (
             <div
               key={fl.id}
-              style={{
-                background: isBooked ? 'var(--success-subtle)' : 'var(--bg-subtle)',
-                padding: '10px 14px',
-                borderRadius: 6,
-                border: isBooked ? '1px solid var(--success-border)' : '1px solid var(--border-subtle)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between'
-              }}
+              className={
+                'p-4 rounded-xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ' +
+                (isBooked
+                  ? 'border-emerald-300 bg-emerald-50/40 ring-1 ring-emerald-400/30'
+                  : 'border-slate-200 hover:border-slate-300 bg-white')
+              }
             >
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                  <span style={{ fontSize: '0.88rem', fontWeight: 600, color: '#fff' }}>{fl.airline}</span>
-                  <span className="mono" style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{fl.flight_no}</span>
-                  <span className="badge badge-pending" style={{ fontSize: '0.65rem', padding: '1px 6px' }}>
-                    {fl.stops === 0 ? 'Non-Stop' : '1 Stop'}
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="text-sm font-bold text-slate-900">{fl.airline}</span>
+                  <span className="text-xs font-mono font-medium text-slate-500 px-2 py-0.5 rounded bg-slate-100">
+                    {fl.flight_number}
+                  </span>
+                  <span className="text-xs font-semibold text-brand-700 bg-brand-50 px-2 py-0.5 rounded-full border border-brand-100">
+                    {fl.class}
                   </span>
                 </div>
-                <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span>{fl.route}</span>
-                  <span>?</span>
-                  <span>{fl.cabin}</span>
-                  <span>?</span>
-                  <span>{fl.baggage}</span>
+
+                <div className="text-xs text-slate-600 flex items-center gap-3">
+                  <span className="font-semibold text-slate-800">{fl.route}</span>
+                  <span>•</span>
+                  <span>Departure: {fl.departure_date}</span>
+                </div>
+
+                <div className="flex items-center gap-1.5 text-xs text-emerald-700 font-medium mt-1.5">
+                  <Luggage className="w-3.5 h-3.5" />
+                  <span>{fl.baggage || '2 x 23kg Checked Bags + 1 Cabin'}</span>
                 </div>
               </div>
 
-              <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div>
-                  <div style={{ fontSize: '1rem', fontWeight: 700, color: '#fff' }}>
-                    ?{(fl.price_ngn).toLocaleString()}
+              <div className="flex sm:flex-col items-center sm:items-end justify-between gap-2 shrink-0">
+                <div className="text-right">
+                  <div className="text-base font-extrabold text-slate-900">
+                    ₦{fl.price_ngn ? fl.price_ngn.toLocaleString() : '1,850,000'}
                   </div>
-                  <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Corporate Relocation Rate</div>
+                  <div className="text-[11px] text-slate-400 font-medium">Employer Billed</div>
                 </div>
+
                 <Button
                   variant={isBooked ? 'success' : 'primary'}
                   size="sm"
                   onClick={() => setSelectedFlight(fl)}
                 >
-                  {isBooked ? '? Reserved' : 'Book Flight'}
+                  {isBooked ? 'Hold Active ✓' : 'Book Corporate Hold'}
                 </Button>
               </div>
             </div>
@@ -73,100 +79,63 @@ export const FlightCards = ({ flights = [] }) => {
         })}
       </div>
 
-      {/* Reservation Modal */}
+      {/* Corporate Billing Hold Modal */}
       {selectedFlight && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(0, 0, 0, 0.75)',
-          backdropFilter: 'blur(4px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 300,
-          padding: 20
-        }}>
-          <div className="tf-card" style={{ width: '100%', maxWidth: 500, padding: 22, position: 'relative', background: '#0e1017' }}>
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-dropdown max-w-md w-full p-6 relative animate-in fade-in zoom-in-95">
             <button
               onClick={() => setSelectedFlight(null)}
-              style={{ position: 'absolute', top: 16, right: 16, background: 'transparent', border: 'none', color: '#8e94a4', cursor: 'pointer' }}
+              className="absolute top-5 right-5 p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
             >
-              <X size={18} />
+              <X className="w-5 h-5" />
             </button>
 
-            <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 2 }}>Confirm Relocation Flight Hold</h3>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 14 }}>
-              Reservation tied to UK Skilled Worker Certificate of Sponsorship
+            <div className="flex items-center gap-2.5 mb-2">
+              <div className="w-8 h-8 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center">
+                <Plane className="w-4 h-4" />
+              </div>
+              <h3 className="text-base font-bold text-slate-900">
+                Confirm Corporate Flight Hold
+              </h3>
+            </div>
+
+            <p className="text-xs text-slate-500 mb-4">
+              Reserve seats without instant card charge pending final visa biometric approval.
             </p>
 
-            <div style={{ background: 'var(--bg-subtle)', padding: 12, borderRadius: 6, marginBottom: 14, fontSize: '0.8rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                <span style={{ color: 'var(--text-muted)' }}>Flight:</span>
-                <span style={{ fontWeight: 600, color: '#fff' }}>{selectedFlight.airline} ({selectedFlight.flight_no})</span>
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-2 mb-4">
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Flight:</span>
+                <span className="font-semibold text-slate-900">{selectedFlight.airline} ({selectedFlight.flight_number})</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                <span style={{ color: 'var(--text-muted)' }}>Route:</span>
-                <span style={{ color: '#fff' }}>{selectedFlight.route}</span>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Route:</span>
+                <span className="font-semibold text-slate-900">{selectedFlight.route}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 6, borderTop: '1px solid var(--border-subtle)' }}>
-                <span style={{ fontWeight: 500 }}>Total Fare:</span>
-                <span style={{ fontWeight: 700, color: '#fff' }}>?{selectedFlight.price_ngn.toLocaleString()}</span>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Baggage:</span>
+                <span className="font-semibold text-emerald-700">{selectedFlight.baggage}</span>
               </div>
-            </div>
-
-            <div style={{ marginBottom: 18 }}>
-              <label style={{ fontSize: '0.74rem', color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
-                Billing Channel
-              </label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                <button
-                  type="button"
-                  onClick={() => setBillingType('corporate')}
-                  style={{
-                    padding: '8px 10px',
-                    borderRadius: 6,
-                    border: billingType === 'corporate' ? '1px solid #3b82f6' : '1px solid var(--border-subtle)',
-                    background: billingType === 'corporate' ? 'var(--bg-surface-elevated)' : 'transparent',
-                    color: '#fff',
-                    cursor: 'pointer',
-                    textAlign: 'left'
-                  }}
-                >
-                  <div style={{ fontSize: '0.78rem', fontWeight: 600 }}>Corporate Billing</div>
-                  <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Bloomberg LP CoS</div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setBillingType('card')}
-                  style={{
-                    padding: '8px 10px',
-                    borderRadius: 6,
-                    border: billingType === 'card' ? '1px solid #3b82f6' : '1px solid var(--border-subtle)',
-                    background: billingType === 'card' ? 'var(--bg-surface-elevated)' : 'transparent',
-                    color: '#fff',
-                    cursor: 'pointer',
-                    textAlign: 'left'
-                  }}
-                >
-                  <div style={{ fontSize: '0.78rem', fontWeight: 600 }}>Nigerian Debit Card</div>
-                  <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Paystack / NGN</div>
-                </button>
+              <div className="flex justify-between border-t border-slate-200 pt-2">
+                <span className="text-slate-500 font-medium">Billed To:</span>
+                <span className="font-bold text-brand-700">Bloomberg LP Corporate Relocation</span>
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-              <Button variant="secondary" size="sm" onClick={() => setSelectedFlight(null)}>
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" size="sm" className="w-full" onClick={() => setSelectedFlight(null)}>
                 Cancel
               </Button>
               <Button
-                variant="success"
+                variant="primary"
                 size="sm"
+                className="w-full"
                 onClick={() => {
                   setBookedFlight(selectedFlight);
                   setSelectedFlight(null);
                 }}
               >
-                Confirm Ticket Hold
+                Authorize 72-Hour Hold
               </Button>
             </div>
           </div>

@@ -2,53 +2,44 @@ import React, { useState } from 'react';
 import { ClientPortal } from './ClientPortal';
 import { StaffDashboard } from './StaffDashboard';
 import { JudgeScenarioBar } from '../components/shared/JudgeScenarioBar';
-import { SplitSquareVertical } from 'lucide-react';
+import { SplitSquareVertical, Sparkles } from 'lucide-react';
 
 export const LiveDemoSimulator = () => {
   const [currentScenario, setCurrentScenario] = useState('bloomberg');
 
   return (
-    <div style={{ position: 'relative', minHeight: 'calc(100vh - 80px)' }}>
+    <div className="min-h-[calc(100vh-64px)] bg-slate-100/60">
       {/* Top Banner */}
-      <div style={{
-        background: 'var(--bg-surface-elevated)',
-        borderBottom: '1px solid var(--border-subtle)',
-        padding: '8px 24px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        fontSize: '0.78rem'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <SplitSquareVertical size={14} color="#60a5fa" />
-          <span style={{ fontWeight: 600, color: '#f1f3f9' }}>Synchronized Dual-Screen View:</span>
-          <span style={{ color: 'var(--text-secondary)' }}>Applicant Intake (Left) ? Consular Review (Right)</span>
+      <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shadow-subtle">
+        <div className="flex items-center gap-2.5 text-xs">
+          <SplitSquareVertical className="w-4 h-4 text-brand-600" />
+          <span className="font-bold text-slate-900">Synchronized Dual-Screen View:</span>
+          <span className="text-slate-500 hidden sm:inline">Client Portal (Left) ⇄ Agency Caseworker Console (Right)</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#10b981', fontSize: '0.74rem' }}>
-          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }} />
-          Bidirectional Session Synced
+        <div className="flex items-center gap-2 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          Bidirectional WebSocket Synced
         </div>
       </div>
 
       {/* 2-Column Split */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: 16,
-        padding: 16,
-        height: 'calc(100vh - 120px)',
-        overflow: 'hidden'
-      }}>
-        <div style={{ border: '1px solid var(--border-subtle)', borderRadius: 8, padding: 12, overflowY: 'auto', background: '#0a0b10' }}>
-          <div style={{ fontSize: '0.74rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', fontWeight: 600, marginBottom: 8 }}>
-            Applicant View (/client)
+      <div className="grid grid-cols-1 xl:grid-cols-2 divide-y xl:divide-y-0 xl:divide-x divide-slate-200">
+        <div className="p-4 sm:p-6 overflow-y-auto max-h-[calc(100vh-120px)]">
+          <div className="mb-3 flex items-center justify-between bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-subtle">
+            <span className="text-xs font-bold uppercase tracking-wider text-brand-700">
+              Screen 1 • Client Relocation Experience
+            </span>
+            <span className="text-[11px] font-mono text-slate-400">/client</span>
           </div>
           <ClientPortal />
         </div>
 
-        <div style={{ border: '1px solid var(--border-subtle)', borderRadius: 8, padding: 12, overflowY: 'auto', background: '#0a0b10' }}>
-          <div style={{ fontSize: '0.74rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', fontWeight: 600, marginBottom: 8 }}>
-            Consular Console (/dashboard)
+        <div className="p-4 sm:p-6 overflow-y-auto max-h-[calc(100vh-120px)] bg-slate-50/50">
+          <div className="mb-3 flex items-center justify-between bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-subtle">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">
+              Screen 2 • Licensed Caseworker Console
+            </span>
+            <span className="text-[11px] font-mono text-slate-400">/dashboard</span>
           </div>
           <StaffDashboard />
         </div>
@@ -56,7 +47,7 @@ export const LiveDemoSimulator = () => {
 
       <JudgeScenarioBar
         currentScenario={currentScenario}
-        onSelectScenario={(sc) => setCurrentScenario(sc)}
+        onSelectScenario={setCurrentScenario}
       />
     </div>
   );

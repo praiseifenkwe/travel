@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Send, CornerDownLeft } from 'lucide-react';
+import { Send, Sparkles } from 'lucide-react';
 
 export const ChatInput = ({ onSendMessage, loading }) => {
   const [text, setText] = useState('');
@@ -18,25 +18,19 @@ export const ChatInput = ({ onSendMessage, loading }) => {
   ];
 
   return (
-    <div>
+    <div className="space-y-3">
       {/* Quick Prompt Chips */}
-      <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 8 }}>
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 shrink-0 flex items-center gap-1">
+          <Sparkles className="w-3 h-3 text-brand-600" />
+          Suggestions:
+        </span>
         {samplePrompts.map((p, i) => (
           <button
             key={i}
             type="button"
             onClick={() => onSendMessage(p)}
-            style={{
-              background: 'var(--bg-subtle)',
-              border: '1px solid var(--border-subtle)',
-              padding: '4px 10px',
-              borderRadius: 4,
-              color: 'var(--text-secondary)',
-              fontSize: '0.72rem',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              transition: 'border-color 0.15s ease'
-            }}
+            className="text-left px-3 py-1 rounded-full text-xs font-medium bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-subtle transition-all shrink-0 cursor-pointer"
           >
             {p}
           </button>
@@ -44,22 +38,21 @@ export const ChatInput = ({ onSendMessage, loading }) => {
       </div>
 
       {/* Input Field */}
-      <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+      <form onSubmit={handleSubmit} className="flex items-center gap-2">
         <input
           type="text"
-          className="input-field"
           placeholder="Type your relocation route, employer details, or questions..."
           value={text}
           onChange={(e) => setText(e.target.value)}
           disabled={loading}
+          className="flex-1 px-4 py-2.5 rounded-xl text-sm bg-white border border-slate-200 shadow-subtle text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all"
         />
         <button
           type="submit"
-          className="btn btn-primary"
           disabled={loading || !text.trim()}
-          style={{ padding: '0 14px' }}
+          className="p-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed text-white shadow-subtle transition-all cursor-pointer"
         >
-          <Send size={14} />
+          <Send className="w-4 h-4" />
         </button>
       </form>
     </div>

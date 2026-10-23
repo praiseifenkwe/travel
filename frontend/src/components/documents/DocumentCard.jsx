@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileCheck, AlertTriangle, Eye, X } from 'lucide-react';
+import { FileCheck, AlertTriangle, Eye, X, ShieldAlert, Sparkles } from 'lucide-react';
 import { Badge } from '../shared/Badge';
 import { Button } from '../shared/Button';
 
@@ -9,83 +9,68 @@ export const DocumentCard = ({ doc }) => {
 
   return (
     <>
-      <div
-        className="tf-card"
-        style={{
-          padding: 14,
-          marginBottom: 10,
-          border: isFlagged ? '1px solid var(--warning-border)' : '1px solid var(--border-subtle)'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {isFlagged ? (
-              <AlertTriangle size={16} color="#fbbf24" />
-            ) : (
-              <FileCheck size={16} color="#10b981" />
-            )}
+      <div className={
+        'rounded-2xl border transition-all p-4 mb-3 shadow-subtle hover:shadow-card ' +
+        (isFlagged ? 'border-amber-300 bg-amber-50/20' : 'bg-white border-slate-200')
+      }>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <div className={
+              'w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ' +
+              (isFlagged ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700')
+            }>
+              {isFlagged ? <AlertTriangle className="w-5 h-5" /> : <FileCheck className="w-5 h-5" />}
+            </div>
             <div>
-              <span style={{ fontWeight: 600, fontSize: '0.86rem', textTransform: 'capitalize' }}>
-                {doc.doc_type?.replace(/_/g, ' ')}
-              </span>
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginLeft: 8 }}>
-                {doc.original_filename || 'Uploaded Document'} ? Confidence: {Math.round((doc.ai_confidence || 0.95) * 100)}%
-              </span>
+              <div className="text-sm font-bold text-slate-900 capitalize">
+                {doc.doc_type ? doc.doc_type.replace(/_/g, ' ') : 'Document'}
+              </div>
+              <div className="text-xs text-slate-500 flex items-center gap-2">
+                <span>{doc.original_filename || 'Uploaded Document'}</span>
+                <span>•</span>
+                <span className="text-emerald-700 font-medium">
+                  Confidence: {Math.round((doc.ai_confidence || 0.95) * 100)}%
+                </span>
+              </div>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div className="flex items-center gap-2">
             <Badge status={doc.status} />
             <button
               onClick={() => setInspectModalOpen(true)}
-              style={{
-                background: 'var(--bg-subtle)',
-                border: '1px solid var(--border-subtle)',
-                padding: '3px 8px',
-                borderRadius: 4,
-                color: 'var(--text-secondary)',
-                fontSize: '0.72rem',
-                cursor: 'pointer'
-              }}
+              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
             >
-              Inspect OCR
+              <Eye className="w-3 h-3" />
+              Inspect
             </button>
           </div>
         </div>
 
-        {/* Extracted Data Row */}
+        {/* Extracted Data Grid */}
         {doc.extracted_data && Object.keys(doc.extracted_data).length > 0 && (
-          <div style={{
-            background: 'var(--bg-subtle)',
-            padding: '8px 10px',
-            borderRadius: 6,
-            fontSize: '0.76rem',
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, 1fr)',
-            gap: 6
-          }}>
+          <div className="bg-slate-50 rounded-xl p-3 border border-slate-200/80 text-xs grid grid-cols-2 gap-2">
             {Object.entries(doc.extracted_data).slice(0, 4).map(([k, v]) => (
-              <div key={k}>
-                <span style={{ color: 'var(--text-muted)', textTransform: 'capitalize' }}>{k.replace(/_/g, ' ')}:</span>{' '}
-                <strong style={{ color: '#fff' }}>{String(v)}</strong>
+              <div key={k} className="flex flex-col">
+                <span className="text-slate-500 text-[11px] font-medium capitalize">
+                  {k.replace(/_/g, ' ')}
+                </span>
+                <span className="font-semibold text-slate-900 truncate">
+                  {String(v)}
+                </span>
               </div>
             ))}
           </div>
         )}
 
-        {/* Issues */}
+        {/* Issues Warning */}
         {doc.issues && doc.issues.length > 0 && (
-          <div style={{
-            background: 'var(--warning-subtle)',
-            border: '1px solid var(--warning-border)',
-            borderRadius: 6,
-            padding: '6px 10px',
-            fontSize: '0.74rem',
-            color: '#fbbf24',
-            marginTop: 8
-          }}>
+          <div className="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 space-y-1">
             {doc.issues.map((issue, idx) => (
-              <div key={idx}>?? {issue.detail}</div>
+              <div key={idx} className="flex items-start gap-2">
+                <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <span>{issue.detail}</span>
+              </div>
             ))}
           </div>
         )}
@@ -93,42 +78,38 @@ export const DocumentCard = ({ doc }) => {
 
       {/* Inspect OCR Modal */}
       {inspectModalOpen && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(0, 0, 0, 0.75)',
-          backdropFilter: 'blur(4px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 300,
-          padding: 20
-        }}>
-          <div className="tf-card" style={{ width: '100%', maxWidth: 540, padding: 22, position: 'relative', background: '#0e1017' }}>
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-dropdown max-w-lg w-full p-6 relative animate-in fade-in zoom-in-95">
             <button
               onClick={() => setInspectModalOpen(false)}
-              style={{ position: 'absolute', top: 16, right: 16, background: 'transparent', border: 'none', color: '#8e94a4', cursor: 'pointer' }}
+              className="absolute top-5 right-5 p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
             >
-              <X size={18} />
+              <X className="w-5 h-5" />
             </button>
 
-            <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 2 }}>
-              Raw OCR Extraction Metadata
-            </h3>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 14 }}>
-              {doc.doc_type?.toUpperCase()} ? Extracted with {Math.round((doc.ai_confidence || 0.95) * 100)}% model confidence
+            <div className="flex items-center gap-2.5 mb-2">
+              <div className="w-8 h-8 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center">
+                <Sparkles className="w-4 h-4" />
+              </div>
+              <h3 className="text-base font-bold text-slate-900">
+                Raw OCR Extraction Metadata
+              </h3>
+            </div>
+            
+            <p className="text-xs text-slate-500 mb-4">
+              {doc.doc_type ? doc.doc_type.toUpperCase() : 'DOCUMENT'} • Extracted with {Math.round((doc.ai_confidence || 0.95) * 100)}% model confidence
             </p>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 18 }}>
+            <div className="space-y-2 mb-6 max-h-72 overflow-y-auto pr-1">
               {doc.extracted_data && Object.entries(doc.extracted_data).map(([k, v]) => (
-                <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 10px', background: 'var(--bg-subtle)', borderRadius: 4, fontSize: '0.78rem' }}>
-                  <span style={{ color: 'var(--text-muted)', textTransform: 'capitalize' }}>{k.replace(/_/g, ' ')}</span>
-                  <span className="mono" style={{ color: '#fff' }}>{String(v)}</span>
+                <div key={k} className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-xs">
+                  <span className="text-slate-500 font-medium capitalize">{k.replace(/_/g, ' ')}</span>
+                  <span className="font-mono font-semibold text-slate-900">{String(v)}</span>
                 </div>
               ))}
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <div className="flex justify-end">
               <Button variant="secondary" size="sm" onClick={() => setInspectModalOpen(false)}>
                 Close
               </Button>

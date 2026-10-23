@@ -5,15 +5,17 @@ import { Button } from '../shared/Button';
 export const AuditCard = ({ issues = [], onStaffAction, loading }) => {
   if (!issues || issues.length === 0) {
     return (
-      <div className="tf-card" style={{ padding: 18, marginBottom: 14, border: '1px solid var(--success-border)', background: 'var(--success-subtle)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <ShieldCheck size={20} color="#10b981" />
+      <div className="bg-emerald-50/70 border-l-4 border-l-emerald-500 border border-emerald-200 rounded-2xl p-5 mb-5 shadow-subtle">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 shadow-subtle">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
             <div>
-              <div style={{ fontSize: '0.88rem', fontWeight: 600, color: '#34d399' }}>Immigration Compliance Cleared</div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                All mandatory evidential requirements satisfy UKVI Skilled Worker Immigration Rules.
-              </div>
+              <h4 className="text-sm font-bold text-emerald-950">Compliance Clearance Granted</h4>
+              <p className="text-xs text-emerald-800">
+                All evidential requirements satisfy official UKVI Immigration Rules without Section 320 refusals.
+              </p>
             </div>
           </div>
           <Button
@@ -21,9 +23,9 @@ export const AuditCard = ({ issues = [], onStaffAction, loading }) => {
             size="sm"
             onClick={() => onStaffAction('authorize_submit')}
             loading={loading}
-            icon={<Send size={13} />}
+            icon={<Send className="w-3.5 h-3.5" />}
           >
-            Authorize UKVI Filing
+            Authorize UKVI Submission
           </Button>
         </div>
       </div>
@@ -31,51 +33,52 @@ export const AuditCard = ({ issues = [], onStaffAction, loading }) => {
   }
 
   return (
-    <div className="tf-card" style={{ padding: 18, marginBottom: 14, border: '1px solid var(--warning-border)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-        <AlertTriangle size={16} color="#fbbf24" />
+    <div className="bg-amber-50/70 border-l-4 border-l-amber-500 border border-amber-200 rounded-2xl p-5 mb-5 shadow-subtle">
+      <div className="flex items-center gap-2.5 mb-2">
+        <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
         <div>
-          <div style={{ fontSize: '0.86rem', fontWeight: 600, color: '#fbbf24' }}>
+          <h4 className="text-sm font-bold text-amber-950">
             Consular Discrepancy Flagged
-          </div>
-          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-            Deterministic rule check requires licensed immigration consultant intervention
-          </div>
+          </h4>
+          <p className="text-xs text-amber-800">
+            {issues.length} item(s) require licensed caseworker determination prior to submission.
+          </p>
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {issues.map((issue, idx) => (
-          <div key={idx} style={{ background: 'var(--bg-subtle)', padding: 12, borderRadius: 6, border: '1px solid var(--border-subtle)' }}>
-            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#fef08a', marginBottom: 2 }}>
-              Rule: {issue.rule.replace(/_/g, ' ').toUpperCase()} ({issue.document})
+      <div className="space-y-2.5 my-4">
+        {issues.map((iss, idx) => (
+          <div key={idx} className="p-3.5 rounded-xl bg-white border border-amber-200 text-xs shadow-subtle">
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <span className="font-bold text-slate-900 font-mono">{iss.rule}</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-100 text-amber-800">
+                Requires Determination
+              </span>
             </div>
-            <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', lineHeight: 1.45, marginBottom: 10 }}>
-              {issue.detail}
-            </div>
-
-            <div style={{ display: 'flex', gap: 8 }}>
-              <Button
-                variant="success"
-                size="sm"
-                onClick={() => onStaffAction('override_issue', issue.rule, 'Employer confirms maintenance guarantee under CoS section A2')}
-                loading={loading}
-                icon={<Check size={13} />}
-              >
-                Approve Under CoS Section A2
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => onStaffAction('query_client', issue.rule, 'Request additional 28-day continuous statement')}
-                loading={loading}
-                icon={<HelpCircle size={13} />}
-              >
-                Query Applicant
-              </Button>
-            </div>
+            <p className="text-slate-600 leading-relaxed">{iss.detail}</p>
           </div>
         ))}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2.5">
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={() => onStaffAction('approve_sponsor_guarantee')}
+          loading={loading}
+          icon={<Check className="w-3.5 h-3.5" />}
+        >
+          Approve CoS Maintenance Guarantee
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => onStaffAction('request_fresh_doc')}
+          loading={loading}
+          icon={<HelpCircle className="w-3.5 h-3.5" />}
+        >
+          Request Updated Bank Statement
+        </Button>
       </div>
     </div>
   );

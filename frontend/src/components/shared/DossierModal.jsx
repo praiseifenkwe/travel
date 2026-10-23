@@ -1,131 +1,108 @@
 import React from 'react';
-import { X, CheckCircle2, Download, Printer } from 'lucide-react';
+import { X, CheckCircle2, Download, Printer, ShieldCheck, FileText, Building2 } from 'lucide-react';
 import { Button } from './Button';
 
 export const DossierModal = ({ isOpen, onClose, appData = {}, documents = [] }) => {
   if (!isOpen) return null;
 
   return (
-    <div style={{
-      position: 'fixed',
-      inset: 0,
-      background: 'rgba(0, 0, 0, 0.8)',
-      backdropFilter: 'blur(4px)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 400,
-      padding: 20
-    }}>
-      <div className="tf-card" style={{
-        width: '100%',
-        maxWidth: 720,
-        maxHeight: '90vh',
-        overflowY: 'auto',
-        padding: 26,
-        position: 'relative',
-        background: '#0e1017'
-      }}>
+    <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-dropdown max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 lg:p-8 relative animate-in fade-in zoom-in-95">
         <button
           onClick={onClose}
-          style={{ position: 'absolute', top: 20, right: 20, background: 'transparent', border: 'none', color: '#8e94a4', cursor: 'pointer' }}
+          className="absolute top-5 right-5 p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
         >
-          <X size={18} />
+          <X className="w-5 h-5" />
         </button>
 
         {/* Header */}
-        <div style={{ borderBottom: '1px solid var(--border-subtle)', paddingBottom: 16, marginBottom: 18 }}>
-          <div style={{ fontSize: '0.68rem', letterSpacing: '0.08em', color: '#10b981', fontWeight: 700, textTransform: 'uppercase' }}>
-            IMMIGRATION COMPLIANCE VERIFICATION RECORD
+        <div className="border-b border-slate-200 pb-4 mb-5">
+          <div className="text-[11px] font-extrabold uppercase tracking-widest text-emerald-700 flex items-center gap-1.5 mb-1">
+            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+            Immigration Compliance Verification Record
           </div>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff', marginTop: 2 }}>
-            UKVI Skilled Worker Compliance Dossier
+          <h2 className="text-xl font-black text-slate-900 tracking-tight">
+            UKVI Electronic Audit Dossier (Tier 2 / Skilled Worker)
           </h2>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            Case Ref: <span className="mono" style={{ color: '#fff' }}>UKVI-LOS-2026-9921-TF</span> ? TravelForge Deterministic Audit
+          <div className="text-xs text-slate-500 font-mono mt-1">
+            Verification Key: SHA-256: 9e4f...b721 • Deterministic Clearance ID: UKVI-TF-2026-981
           </div>
         </div>
 
-        {/* Details Grid */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: 10,
-          padding: 12,
-          background: 'var(--bg-subtle)',
-          borderRadius: 6,
-          fontSize: '0.78rem',
-          marginBottom: 18
-        }}>
+        {/* Applicant Summary Banner */}
+        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 grid grid-cols-2 gap-3 text-xs mb-6">
           <div>
-            <div style={{ color: 'var(--text-muted)' }}>Applicant:</div>
-            <div style={{ fontWeight: 600, color: '#fff', marginTop: 1 }}>{appData.client_name || 'Tunde Babatunde Adeyemi'}</div>
+            <span className="text-slate-500 text-[11px] font-medium">Applicant Legal Name</span>
+            <div className="font-bold text-slate-900 text-sm mt-0.5">{appData.client_name || 'Tunde Babatunde Adeyemi'}</div>
           </div>
           <div>
-            <div style={{ color: 'var(--text-muted)' }}>Nationality:</div>
-            <div style={{ fontWeight: 600, color: '#fff', marginTop: 1 }}>Nigerian</div>
+            <span className="text-slate-500 text-[11px] font-medium">Sponsoring Body</span>
+            <div className="font-bold text-slate-900 text-sm mt-0.5">{appData.employer || 'Bloomberg LP (London)'}</div>
           </div>
           <div>
-            <div style={{ color: 'var(--text-muted)' }}>Sponsoring Entity:</div>
-            <div style={{ fontWeight: 600, color: '#fff', marginTop: 1 }}>{appData.employer || 'Bloomberg LP (UK)'}</div>
+            <span className="text-slate-500 text-[11px] font-medium">UKVI Visa Pathway</span>
+            <div className="font-bold text-brand-700 text-sm mt-0.5">Skilled Worker (Appendix Finance Passed)</div>
           </div>
           <div>
-            <div style={{ color: 'var(--text-muted)' }}>CoS Number:</div>
-            <div className="mono" style={{ fontWeight: 600, color: '#fff', marginTop: 1 }}>WAC2671049281 (Active)</div>
-          </div>
-          <div>
-            <div style={{ color: 'var(--text-muted)' }}>Maintenance Status:</div>
-            <div style={{ fontWeight: 600, color: '#10b981', marginTop: 1 }}>Certified (CoS Sec A2)</div>
-          </div>
-          <div>
-            <div style={{ color: 'var(--text-muted)' }}>Biometrics Facility:</div>
-            <div style={{ fontWeight: 600, color: '#fff', marginTop: 1 }}>TLScontact Victoria Island</div>
+            <span className="text-slate-500 text-[11px] font-medium">Filing Destination</span>
+            <div className="font-bold text-slate-900 text-sm mt-0.5">TLScontact Victoria Island, Lagos</div>
           </div>
         </div>
 
-        {/* Evidence Table */}
-        <div style={{ fontSize: '0.74rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', fontWeight: 600, marginBottom: 8 }}>
-          Evidential Audit Items
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
-          {[
-            { name: 'International Passport (Bio Page)', doc: 'A12345678', desc: 'Valid with Consultant Expiry Extension Override', score: '98% OCR Match' },
-            { name: 'Certificate of Sponsorship (CoS)', doc: 'WAC2671049281', desc: 'Role: Senior Software Engineer (?85,000/yr)', score: '99% Certainty' },
-            { name: 'IOM Tuberculosis Medical Clearance', doc: 'IOM-LOS-2026-8819', desc: 'Normal / Negative Chest Radiograph', score: '100% Cleared' },
-            { name: '28-Day Financial Statement', doc: 'First Bank Nigeria', desc: 'Closing Balance: ?14,500,000 (> ?1,270 UKVI threshold)', score: '94% Confidence' }
-          ].map((item, idx) => (
-            <div
-              key={idx}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '8px 12px',
-                borderRadius: 4,
-                background: 'var(--bg-subtle)',
-                fontSize: '0.76rem'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <CheckCircle2 size={14} color="#10b981" />
+        {/* Verified Evidential Checklist */}
+        <div className="mb-6">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900 mb-3">
+            Satisfied Evidential Requirements
+          </h4>
+          <div className="space-y-2">
+            {[
+              {
+                rule: 'UKVI Appendix Skilled Worker — SW 4.1',
+                detail: 'Valid Certificate of Sponsorship issued by Tier-A Licensed Sponsor (Bloomberg LP)',
+                status: 'Passed'
+              },
+              {
+                rule: 'UKVI Appendix Finance — FIN 2.1',
+                detail: 'Maintenance Requirement Guarantee certified by Sponsor under CoS Section A2',
+                status: 'Passed'
+              },
+              {
+                rule: 'UKVI Appendix Tuberculosis — TB 1.1',
+                detail: 'IOM-accredited clinic medical screening certificate confirmed negative',
+                status: 'Passed'
+              },
+              {
+                rule: 'UKVI Immigration Act 1971 — Part 9',
+                detail: 'Biometric optical passport diff reconciled (0 discrepancies, 0 criminal records)',
+                status: 'Passed'
+              }
+            ].map((item, idx) => (
+              <div key={idx} className="p-3 rounded-xl bg-emerald-50/50 border border-emerald-200/80 text-xs flex items-start justify-between gap-3">
                 <div>
-                  <span style={{ fontWeight: 600, color: '#fff' }}>{item.name}</span>
-                  <span style={{ color: 'var(--text-muted)', marginLeft: 8 }}>{item.desc}</span>
+                  <div className="font-bold text-emerald-950 font-mono">{item.rule}</div>
+                  <div className="text-emerald-800 text-[11px] mt-0.5">{item.detail}</div>
                 </div>
+                <span className="inline-flex items-center gap-1 font-bold text-emerald-700 bg-white px-2 py-0.5 rounded-full border border-emerald-200 shrink-0 text-[11px]">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-600" /> {item.status}
+                </span>
               </div>
-              <span className="mono" style={{ color: '#10b981', fontWeight: 500 }}>{item.score}</span>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
 
-        {/* Footer */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
-          <Button variant="secondary" size="sm" onClick={() => window.print()} icon={<Printer size={13} />}>
-            Print
-          </Button>
-          <Button variant="primary" size="sm" onClick={onClose} icon={<Download size={13} />}>
-            Export Verified PDF
-          </Button>
+        {/* Footer Actions */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-200">
+          <div className="text-xs text-slate-500 font-medium">
+            Electronically Signed by <strong className="text-slate-700">TravelForge Engine</strong>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" size="sm" onClick={onClose} icon={<Printer className="w-3.5 h-3.5" />}>
+              Print Record
+            </Button>
+            <Button variant="primary" size="sm" onClick={onClose} icon={<Download className="w-3.5 h-3.5" />}>
+              Download Official PDF
+            </Button>
+          </div>
         </div>
       </div>
     </div>

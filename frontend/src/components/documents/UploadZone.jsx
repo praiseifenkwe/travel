@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { UploadCloud, FileText, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
+import { UploadCloud, FileText, CheckCircle2, AlertTriangle, Loader2, Sparkles } from 'lucide-react';
 import { Button } from '../shared/Button';
 
 export const UploadZone = ({ onUpload, selectedDocType = 'passport', onTypeChange }) => {
@@ -48,38 +48,33 @@ export const UploadZone = ({ onUpload, selectedDocType = 'passport', onTypeChang
   };
 
   return (
-    <div className="tf-card" style={{ padding: 18, marginBottom: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-card p-5 mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div>
-          <div style={{ fontSize: '0.86rem', fontWeight: 600 }}>Document Ingestion & OCR Extraction</div>
-          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Automated field mapping & compliance check</div>
+          <h3 className="text-sm font-bold text-slate-900">Document Ingestion & OCR Extraction</h3>
+          <p className="text-xs text-slate-500">Automated field mapping & compliance check</p>
         </div>
-        <span className="badge badge-processing">GPT-4o Vision</span>
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-brand-50 text-brand-700 border border-brand-200">
+          <Sparkles className="w-3.5 h-3.5 text-brand-600" />
+          GPT-4o Vision
+        </span>
       </div>
 
       {/* Doc Type Selector */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6, marginBottom: 12 }}>
-        {docTypes.map((dt) => (
-          <button
-            key={dt.id}
-            type="button"
-            onClick={() => onTypeChange(dt.id)}
-            style={{
-              padding: '6px 10px',
-              borderRadius: 6,
-              fontSize: '0.78rem',
-              fontWeight: 500,
-              cursor: 'pointer',
-              border: selectedDocType === dt.id ? '1px solid #3b82f6' : '1px solid var(--border-subtle)',
-              background: selectedDocType === dt.id ? 'var(--bg-surface-elevated)' : 'var(--bg-subtle)',
-              color: selectedDocType === dt.id ? '#ffffff' : 'var(--text-secondary)',
-              textAlign: 'left',
-              transition: 'all 0.15s ease'
-            }}
-          >
-            {dt.label}
-          </button>
-        ))}
+      <div className="grid grid-cols-2 gap-2 mb-4">
+        {docTypes.map((dt) => {
+          const isSelected = selectedDocType === dt.id;
+          return (
+            <button
+              key={dt.id}
+              type="button"
+              onClick={() => onTypeChange(dt.id)}
+              className="	ext-left px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer "
+            >
+              {dt.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Drop Area */}
@@ -88,53 +83,52 @@ export const UploadZone = ({ onUpload, selectedDocType = 'passport', onTypeChang
         onDragLeave={handleDrag}
         onDragOver={handleDrag}
         onDrop={handleDrop}
-        style={{
-          border: dragActive ? '1px dashed #3b82f6' : '1px dashed var(--border-medium)',
-          borderRadius: 8,
-          padding: '20px 14px',
-          textAlign: 'center',
-          background: dragActive ? 'rgba(59, 130, 246, 0.05)' : 'var(--bg-subtle)',
-          cursor: 'pointer',
-          position: 'relative'
-        }}
+        className="
+elative border-2 border-dashed rounded-xl p-6 text-center transition-all cursor-pointer "
       >
         <input
           type="file"
           accept="image/*,application/pdf"
           onChange={handleChange}
           disabled={uploading}
-          style={{
-            position: 'absolute',
-            inset: 0,
-            opacity: 0,
-            cursor: 'pointer',
-            width: '100%',
-            height: '100%'
-          }}
+          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
         />
 
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+        <div className="flex flex-col items-center justify-center gap-2">
           {uploading ? (
-            <Loader2 size={22} color="#3b82f6" style={{ animation: 'spin 1s linear infinite' }} />
+            <Loader2 className="w-8 h-8 text-brand-600 animate-spin" />
           ) : (
-            <UploadCloud size={22} color="#8e94a4" />
+            <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 shadow-subtle flex items-center justify-center text-slate-600">
+              <UploadCloud className="w-5 h-5 text-brand-600" />
+            </div>
           )}
 
-          <div style={{ fontSize: '0.84rem', fontWeight: 500 }}>
-            {uploading ? 'Processing OCR & running compliance engine...' : file ? file.name : 'Upload file or drag and drop'}
-          </div>
-          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-            PDF, PNG, JPG up to 15MB
+          <div>
+            <div className="text-sm font-semibold text-slate-800">
+              {uploading
+                ? 'Processing OCR & running compliance engine...'
+                : file
+                ? file.name
+                : 'Upload document or drag and drop'}
+            </div>
+            <div className="text-xs text-slate-500 mt-0.5">
+              PDF, PNG, JPG up to 15MB
+            </div>
           </div>
         </div>
       </div>
 
       {file && !uploading && (
-        <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+        <div className="mt-4 flex items-center justify-end gap-2">
           <Button variant="secondary" size="sm" onClick={() => setFile(null)}>
             Cancel
           </Button>
-          <Button variant="primary" size="sm" onClick={handleStartUpload} icon={<FileText size={14} />}>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={handleStartUpload}
+            icon={<FileText className="w-4 h-4" />}
+          >
             Analyze Document
           </Button>
         </div>
