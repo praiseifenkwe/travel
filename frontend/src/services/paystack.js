@@ -14,7 +14,7 @@ export const openPaystackPopup = ({
 }) => {
   const paystackKey =
     import.meta.env.VITE_PAYSTACK_PUBLIC_KEY ||
-    "pk_test_d34f0e74f7626919e917d84860b73b5785f82c42";
+    "pk_live_ef0b68230a8ac1631ebceb6a613000203a1a1f7e";
 
   const launch = () => {
     if (typeof window !== "undefined" && window.PaystackPop) {
