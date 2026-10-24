@@ -269,8 +269,6 @@ export const ClientPortal = () => {
     }
   };
 
-  const [tripDossier, setTripDossier] = useState(defaultDossier);
-
   const initialGreeting = [
     {
       id: 1,
@@ -294,7 +292,34 @@ To begin, please select your travel destination or upload your international pas
     }
   ];
 
-  const [messages, setMessages] = useState(initialGreeting);
+  // Helper to load snapshot of active session on reload/mount
+  const getInitialActiveSession = () => {
+    try {
+      const activeId = localStorage.getItem("travelforge_active_session_id");
+      const saved = localStorage.getItem("travelforge_saved_sessions");
+      if (saved && activeId) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.find((s) => s.id === activeId) || null;
+        }
+      }
+    } catch (e) {
+      console.warn("Could not retrieve active session from localStorage:", e);
+    }
+    return null;
+  };
+
+  const [tripDossier, setTripDossier] = useState(() => {
+    const existing = getInitialActiveSession();
+    return existing?.tripDossier ? existing.tripDossier : defaultDossier;
+  });
+
+  const [messages, setMessages] = useState(() => {
+    const existing = getInitialActiveSession();
+    return (existing?.messages && Array.isArray(existing.messages) && existing.messages.length > 0)
+      ? existing.messages
+      : initialGreeting;
+  });
 
   // Auto-scroll to bottom of chat
   const scrollToBottom = () => {
