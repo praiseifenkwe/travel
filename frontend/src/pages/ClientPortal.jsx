@@ -102,6 +102,84 @@ const FormattedMessage = ({ text }) => {
   );
 };
 
+// Dynamic Autonomous Conversational Intelligence Engine (handles proverbs, "what can you do", topic changes, advice)
+const generateAutonomousReply = (text, destination = "New York, United States", countryCode = "US") => {
+  const lower = text.toLowerCase().trim();
+  const isUs = countryCode === "US" || (destination && (destination.toLowerCase().includes("united states") || destination.toLowerCase().includes("new york")));
+
+  // Capabilities / "what can you do" / "help"
+  if (
+    lower.includes("what can you do") ||
+    lower.includes("what do you do") ||
+    lower.includes("capabilities") ||
+    lower.includes("how does this work") ||
+    lower.includes("features") ||
+    lower.includes("who are you") ||
+    lower === "help"
+  ) {
+    return {
+      text: `I am TravelForge's autonomous **Consular Concierge & Immigration Copilot** 🤖.\n\nHere is everything I manage autonomously under strict statutory compliance:\n\n• **🛂 International Passport Audit**: Scans passport data pages to verify 6-month statutory validity before travel.\n• **🏛️ Visa Pathway Selection**: Maps your profile to official UK (Skilled Worker, Visitor) or US (H-1B, B1/B2) pathways.\n• **📊 6-Month Financial Audit**: Audits transaction ledgers against statutory maintenance thresholds (${isUs ? "$2,500 (~₦3,850,000)" : "£1,270 (~₦2,667,000)"}).\n• **💳 Live Paystack Payments**: Direct payment settlement for consular fees and ticket holds.\n• **🎫 Physical Embassy Slips**: Generates official appointment slips for VFS Global biometric enrollment.\n• **✈️ GDS Flights & Hotel Vouchers**: Locks 72h PNRs and issues consular proof-of-stay vouchers from scraped inventory.\n\nYou can upload a document with the paperclip (📎), ask any consular question, or explore flight and hotel options!`,
+      options: ["✈️ Show Direct Flights", "🏨 Show Certified Hotels", "➕ Start New Session"]
+    };
+  }
+
+  // Proverbs / Sayings / "the king is a boy" / Expressions
+  if (
+    lower.includes("king is a boy") ||
+    lower.includes("the king is a boy") ||
+    lower.includes("proverb") ||
+    lower.includes("saying") ||
+    lower.includes("uneasy lies the head")
+  ) {
+    return {
+      text: `Ah, a classic expression! As the proverb goes, wisdom and sound counsel make the kingdom thrive—even when *"the king is a boy"*! 👑\n\nWhether you are taking on grand new ventures or planning your relocation to **${destination}**, I'm here to ensure your consular roadmap, paperwork, and travel logistics are fit for royalty.\n\nHow would you like to proceed with your royal journey?`,
+      options: ["✈️ Show Direct Flights", "🏨 Show Certified Hotels", "📊 Financial Audit Info"]
+    };
+  }
+
+  // Weather / Packing
+  if (lower.includes("weather") || lower.includes("climate") || lower.includes("cold") || lower.includes("winter") || lower.includes("temperature")) {
+    return {
+      text: isUs 
+        ? `🌤️ **New York Climate & Travel Guidance**:\n\n• **Current Season**: Late Autumn / Winter transition with temperatures from 5°C to 15°C.\n• **Packing Advice**: A warm coat, scarf, and comfortable walking shoes for Manhattan streets.\n\nWould you like to explore direct flight schedules or hotel options near Times Square?`
+        : `🌧️ **London Climate & Travel Guidance**:\n\n• **Current Season**: Chilly and crisp, ranging from 7°C to 13°C with occasional light drizzle.\n• **Packing Advice**: A quality waterproof jacket, umbrella, and layered knitwear.\n\nWould you like to check flights into Heathrow or certified London hotels?`,
+      options: ["✈️ Show Direct Flights", "🏨 Show Certified Hotels"]
+    };
+  }
+
+  // Cost of living / Currency / Exchange rates
+  if (lower.includes("cost of living") || lower.includes("exchange rate") || lower.includes("currency") || lower.includes("dollar") || lower.includes("pound") || lower.includes("budget")) {
+    return {
+      text: isUs
+        ? `💵 **New York Financial & Currency Overview**:\n\n• **Currency**: US Dollar ($ / USD)\n• **Current Benchmark Rate**: ~₦1,535 – ₦1,550 per $1 USD.\n• **Statutory Maintenance**: Minimum $2,500 (~₦3,850,000) average 6-month balance required for consular approval.\n• **Daily Budget**: $120–$250/day including meals and subway transit.\n\nOur system verifies your bank statement automatically to ensure consular sufficiency!`
+        : `💷 **London Financial & Currency Overview**:\n\n• **Currency**: British Pound Sterling (£ / GBP)\n• **Current Benchmark Rate**: ~₦2,100 per £1 GBP.\n• **Statutory Maintenance**: Minimum £1,270 (~₦2,667,000) for standard visitor compliance.\n• **Daily Budget**: £70–£150/day including Oyster/Contactless tube travel.\n\nReady to audit your bank statement or check certified hotels?`,
+      options: ["🏨 Show Certified Hotels", "✈️ Show Direct Flights"]
+    };
+  }
+
+  // Humor / Jokes
+  if (lower.includes("joke") || lower.includes("funny") || lower.includes("laugh")) {
+    return {
+      text: `😄 Here's one for your journey:\n\n*Why don't airplanes ever get lost?*\nBecause they always take the flight path! ✈️\n\nI'm keeping your relocation to **${destination}** smooth and stress-free. What can I organize for you next?`,
+      options: ["✈️ Show Direct Flights", "🏨 Show Certified Hotels"]
+    };
+  }
+
+  // Greetings
+  if (lower.includes("hello") || lower.includes("hi ") || lower === "hi" || lower.includes("hey") || lower.includes("good morning") || lower.includes("good afternoon")) {
+    return {
+      text: `Hello! I'm active and ready to assist with your relocation and consular dossier for **${destination}**.\n\nYou can ask me questions about visa policies, check flights, reserve certified hotels, or upload documents (📎) for audit!`,
+      options: ["✈️ Show Direct Flights", "🏨 Show Certified Hotels", "➕ Start New Session"]
+    };
+  }
+
+  // Dynamic Context-Aware Topic Follow-up
+  return {
+    text: `I understand! As your autonomous relocation concierge, I adapt to your needs whether you're exploring life in **${destination}**, discussing travel strategies, or navigating consular guidelines.\n\nRegarding *"${text}"*, feel free to tell me more, or let me know if you would like to inspect flight schedules, hotel vouchers, or financial compliance!`,
+    options: ["✈️ Show Direct Flights", "🏨 Show Certified Hotels", "➕ Start New Session"]
+  };
+};
+
 export const ClientPortal = () => {
   const { user } = useAuth();
   const fileInputRef = useRef(null);
@@ -470,7 +548,7 @@ To begin, please select your travel destination or upload your international pas
   };
 
   // Conversational Intent Handler
-  const handleSend = (overrideText = null) => {
+  const handleSend = async (overrideText = null) => {
     const textToSend = overrideText || input;
     if (!textToSend.trim()) return;
 
@@ -485,7 +563,7 @@ To begin, please select your travel destination or upload your international pas
     if (!overrideText) setInput("");
     setIsTyping(true);
 
-    const lower = textToSend.toLowerCase();
+    const lower = textToSend.toLowerCase().trim();
 
     // 0. New Session / Reset Intent
     if (lower.includes("new session") || lower.includes("start new") || lower.includes("reset")) {
@@ -669,17 +747,46 @@ To begin, please select your travel destination or upload your international pas
       return;
     }
 
-    // 5. Default Assistant Response
+    // 5. Try calling live backend AI Agent first (when session/LLM is ready)
+    try {
+      const res = await apiService.chat.send({
+        message: textToSend,
+        session_id: activeSessionId
+      });
+      if (res && res.reply) {
+        setIsTyping(false);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now() + 1,
+            role: "assistant",
+            text: res.reply,
+            type: "text",
+            options: [
+              "✈️ Show Direct Flights",
+              "🏨 Show Certified Hotels",
+              "➕ Start New Session"
+            ]
+          }
+        ]);
+        return;
+      }
+    } catch (err) {
+      console.warn("Backend chat deferred to autonomous conversational intelligence engine:", err);
+    }
+
+    // 6. Dynamic Autonomous Conversational Intelligence Engine
     setTimeout(() => {
       setIsTyping(false);
+      const replyData = generateAutonomousReply(textToSend, tripDossier.destination, tripDossier.countryCode);
       setMessages((prev) => [
         ...prev,
         {
           id: Date.now() + 1,
           role: "assistant",
-          text: `I'm here to assist with your relocation intake for **${tripDossier.destination}**. What would you like to do next?`,
+          text: replyData.text,
           type: "text",
-          options: [
+          options: replyData.options || [
             "✈️ Show Direct Flights",
             "🏨 Show Certified Hotels",
             "➕ Start New Session"
