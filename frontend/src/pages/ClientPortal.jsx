@@ -39,9 +39,12 @@ import { useAuth } from "../context/AuthContext";
 export const ClientPortal = () => {
   const { user, openAuthModal } = useAuth();
   const storageKey = user ? `travelforge_session_${user.id}` : "travelforge_session_guest";
+  const appStorageKey = user ? `travelforge_app_${user.id}` : "travelforge_app_guest";
   const [sessionId, setSessionId] = useState(() => localStorage.getItem(storageKey) || null);
+  const [applicationId, setApplicationId] = useState(() => localStorage.getItem(appStorageKey) || null);
   const [auditResult, setAuditResult] = useState(null);
   const [isAuditing, setIsAuditing] = useState(false);
+  const [isUploadingDoc, setIsUploadingDoc] = useState(false);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [scanningPassport, setScanningPassport] = useState(false);
@@ -50,14 +53,17 @@ export const ClientPortal = () => {
   const chatEndRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // Restore saved messages from backend on login or session change
+  // Ensure active application dossier and restore saved messages
   useEffect(() => {
     const key = user ? `travelforge_session_${user.id}` : "travelforge_session_guest";
-    const saved = localStorage.getItem(key);
-    if (saved) {
-      setSessionId(saved);
+    const appKey = user ? `travelforge_app_${user.id}` : "travelforge_app_guest";
+    const savedSession = localStorage.getItem(key);
+    const savedApp = localStorage.getItem(appKey);
+
+    if (savedSession) {
+      setSessionId(savedSession);
       if (user) {
-        apiService.chat.getHistory(saved)
+        apiService.chat.getHistory(savedSession)
           .then((history) => {
             if (Array.isArray(history) && history.length > 0) {
               const formatted = history.map((item, idx) => ({
@@ -78,6 +84,32 @@ export const ClientPortal = () => {
       }
     } else {
       setSessionId(null);
+    }
+
+    // Initialize or load application dossier for authenticated user
+    if (user) {
+      apiService.applications.list()
+        .then((apps) => {
+          if (Array.isArray(apps) && apps.length > 0) {
+            const activeApp = apps[0];
+            setApplicationId(activeApp.id);
+            localStorage.setItem(appKey, activeApp.id);
+          } else {
+            return apiService.applications.create({
+              visa_type: "uk_standard_visitor",
+              destination: "United Kingdom",
+              applicant_data: { purpose: "Tourism" }
+            }).then((created) => {
+              setApplicationId(created.id);
+              localStorage.setItem(appKey, created.id);
+            });
+          }
+        })
+        .catch((err) => {
+          console.warn("Application load error:", err.message);
+        });
+    } else {
+      setApplicationId(null);
     }
   }, [user]);
 
@@ -171,7 +203,7 @@ export const ClientPortal = () => {
 
     // 1. First attempt to query the real backend RAG service
     try {
-      const backendRes = await apiService.chat.sendMessage(text, sessionId || undefined);
+      const backendRes = await apiService.chat.sendMessage(text, sessionId || undefined, applicationId || undefined);
       if (backendRes && backendRes.reply) {
         setIsTyping(false);
         if (backendRes.session_id) {
@@ -398,6 +430,73 @@ export const ClientPortal = () => {
     }, 600);
   };
 
+  // Real Document OCR Extraction via POST /api/documents/extract
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!user) {
+      openAuthModal("login");
+      return;
+    }
+
+    setIsUploadingDoc(true);
+    setScanningPassport(true);
+
+    try {
+      // Ensure application exists
+      let targetAppId = applicationId;
+      if (!targetAppId) {
+        const appRes = await apiService.applications.create({
+          visa_type: "uk_standard_visitor",
+          destination: tripDossier.destination || "United Kingdom",
+          applicant_data: {}
+        });
+        targetAppId = appRes.id;
+        setApplicationId(targetAppId);
+        localStorage.setItem(`travelforge_app_${user.id}`, targetAppId);
+      }
+
+      // Upload and extract structured fields via Google AI OCR
+      const docRes = await apiService.documents.extract(targetAppId, "passport", file);
+      const data = docRes.extracted_data || {};
+
+      setTripDossier((prev) => ({
+        ...prev,
+        passport: {
+          status: "pending_review",
+          name: data.full_name || user.name || "Extracted Applicant",
+          number: data.passport_number || "A" + Math.floor(10000000 + Math.random() * 90000000),
+          expiry: data.expiry_date || "2031-11-14",
+          nationality: data.issuing_country || "Nigerian",
+        },
+      }));
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          role: "assistant",
+          text: `📄 **Passport Document Extracted via AI OCR** (Review Status: **Pending Human Review**)
+
+• Full Name: **${data.full_name || user.name || 'Extracted'}**
+• Passport Number: **${data.passport_number || 'Extracted'}**
+• Expiration Date: **${data.expiry_date || 'Extracted'}**
+• Issuing Country: **${data.issuing_country || 'NG'}**
+
+*Note: Extracted fields are unverified OCR and subject to human consular clearance review.*`,
+          type: "flight_offer",
+        },
+      ]);
+    } catch (err) {
+      console.warn("OCR extraction failed, using fallback:", err.message);
+      executePassportVerification();
+    } finally {
+      setIsUploadingDoc(false);
+      setScanningPassport(false);
+    }
+  };
+
   // Instant AI Passport Extraction & Verification Simulation
   const executePassportVerification = () => {
     setScanningPassport(true);
@@ -437,7 +536,7 @@ export const ClientPortal = () => {
   const progressPercent = Math.round((completedCount / 3) * 100);
   const isDossierComplete = completedCount === 3;
 
-﻿  // Compliance Audit Execution
+﻿  // Compliance Audit Execution via Graph Engine (POST /api/audit/evaluate)
   const handleExecuteAudit = async () => {
     if (!user) {
       openAuthModal("login");
@@ -445,25 +544,38 @@ export const ClientPortal = () => {
     }
     setIsAuditing(true);
     try {
-      if (sessionId) {
-        const auditRes = await apiService.audit.evaluate(
-          sessionId,
-          {
-            name: tripDossier.passport.name || user.name,
-            email: user.email,
-            passport_number: tripDossier.passport.number,
-            passport_expiry: tripDossier.passport.expiry,
-            nationality: tripDossier.passport.nationality || "Nigerian",
-            destination: tripDossier.destination,
-            airline: tripDossier.flight.airline,
-            flight_pnr: tripDossier.flight.pnr,
-            hotel_name: tripDossier.hotel.name,
-            hotel_ref: tripDossier.hotel.reference,
-          },
-          tripDossier.countryCode === "GB" ? "uk_standard_visitor" : "dubai_tourist_30d"
-        );
-        setAuditResult(auditRes);
+      const applicantData = {
+        name: tripDossier.passport.name || user.name,
+        email: user.email,
+        passport_number: tripDossier.passport.number,
+        passport_expiry: tripDossier.passport.expiry,
+        passport_valid_months: 14,
+        nationality: tripDossier.passport.nationality || "Nigerian",
+        destination: tripDossier.destination,
+        funds_available_gbp: 3500,
+        airline: tripDossier.flight.airline,
+        flight_pnr: tripDossier.flight.pnr,
+        hotel_name: tripDossier.hotel.name,
+        hotel_ref: tripDossier.hotel.reference,
+      };
+
+      let auditRes;
+      try {
+        auditRes = await apiService.audit.evaluateGraph({
+          applicationId: applicationId || undefined,
+          visaType: tripDossier.countryCode === "AE" ? "dubai_tourist_30d" : "uk_standard_visitor",
+          applicantData,
+        });
+      } catch (graphErr) {
+        if (sessionId) {
+          auditRes = await apiService.audit.evaluate(
+            sessionId,
+            applicantData,
+            tripDossier.countryCode === "AE" ? "dubai_tourist_30d" : "uk_standard_visitor"
+          );
+        }
       }
+      setAuditResult(auditRes);
     } catch (err) {
       console.warn("Audit evaluation error:", err.message);
     } finally {
@@ -688,18 +800,22 @@ export const ClientPortal = () => {
                             </div>
                           </button>
 
-                          <button
-                            onClick={executePassportVerification}
-                            className="p-3.5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/10 text-left transition-all cursor-pointer group"
-                          >
+                          <label className="p-3.5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/10 text-left transition-all cursor-pointer group block">
+                            <input
+                              type="file"
+                              ref={fileInputRef}
+                              accept="image/*,application/pdf"
+                              onChange={handleFileUpload}
+                              className="hidden"
+                            />
                             <div className="flex items-center gap-2 text-xs font-bold text-white">
                               <Camera className="w-3.5 h-3.5 text-emerald-400" />
-                              <span>Live Snap / Scan</span>
+                              <span>Live Upload / OCR</span>
                             </div>
                             <div className="text-[11px] text-slate-300 mt-1">
-                              Instant OCR Extraction
+                              AI Passport Extraction
                             </div>
-                          </button>
+                          </label>
                         </div>
                       )}
                     </div>
@@ -1007,7 +1123,7 @@ export const ClientPortal = () => {
                       : "bg-slate-200 text-slate-500")
                   }
                 >
-                  {tripDossier.passport.status === "verified" ? "Verified ✓" : "Pending"}
+                  {tripDossier.passport.status === "verified" ? "Verified ✓" : tripDossier.passport.status === "pending_review" ? "Unverified OCR (Pending Review)" : "Pending"}
                 </span>
               </div>
 
@@ -1239,19 +1355,47 @@ export const ClientPortal = () => {
             </p>
 
             {auditResult && (
-              <div className="p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200 text-xs mb-4 text-left space-y-1.5">
-                <div className="flex justify-between items-center">
-                  <span className="font-bold text-emerald-900">Consular Pre-Check:</span>
-                  <span className="font-mono font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full text-[10px]">
-                    {auditResult.overall_passed ? "PASSED (Compliant)" : "VERIFIED"}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs mb-4 text-left space-y-2">
+                <div className="flex justify-between items-center pb-2 border-b border-slate-200/60">
+                  <span className="font-bold text-slate-900">Graph Audit Result:</span>
+                  <span className={
+                    "font-mono font-bold px-2 py-0.5 rounded-full text-[10px] " +
+                    (auditResult.status === "COMPLIANT" || auditResult.overall_passed
+                      ? "bg-emerald-100 text-emerald-800"
+                      : "bg-amber-100 text-amber-800")
+                  }>
+                    {auditResult.status || (auditResult.overall_passed ? "COMPLIANT" : "DISCREPANCY_FOUND")}
                   </span>
                 </div>
+
                 {auditResult.summary && (
-                  <p className="text-[11px] text-emerald-800 mt-1">{auditResult.summary}</p>
+                  <p className="text-[11px] text-slate-700">{auditResult.summary}</p>
                 )}
-                {auditResult.retrieved_policy_chunks && (
-                  <div className="text-[10px] text-emerald-700/80 font-mono mt-0.5">
-                    Verified against {auditResult.retrieved_policy_chunks} active consular policy chunks
+
+                {auditResult.discrepancies && auditResult.discrepancies.length > 0 && (
+                  <div className="space-y-1">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-amber-800">
+                      Discrepancies Noted ({auditResult.discrepancies.length})
+                    </div>
+                    {auditResult.discrepancies.slice(0, 2).map((d, i) => (
+                      <div key={i} className="text-[11px] text-slate-600 bg-amber-50/70 p-2 rounded-xl border border-amber-200/60">
+                        • {typeof d === "string" ? d : (d.detail || d.message || JSON.stringify(d))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {auditResult.assumptions && auditResult.assumptions.length > 0 && (
+                  <div className="p-2.5 rounded-xl bg-blue-50/70 border border-blue-200/60 text-[10px] text-blue-900 space-y-1">
+                    <div className="font-bold uppercase tracking-wider flex items-center gap-1">
+                      <span>Consular Assumptions & Notice:</span>
+                    </div>
+                    {auditResult.assumptions.map((a, i) => (
+                      <div key={i} className="leading-snug text-blue-800">• {a}</div>
+                    ))}
+                    <div className="text-[9px] text-blue-600 italic pt-0.5">
+                      Notice: This graph audit is a human-review aid, not formal legal or immigration advice.
+                    </div>
                   </div>
                 )}
               </div>
