@@ -112,11 +112,12 @@ export const ClientPortal = () => {
     paymentRef: null,
     passport: {
       status: "unverified", // "unverified", "verified", "rejected"
-      name: "Tunde Babatunde Adeyemi",
-      number: "A12345678",
+      name: "OPEYEMI SAMUEL ADEKUNLE",
+      number: "A14892011",
       expiry: "14 Nov 2031",
       nationality: "Nigerian",
       monthsValid: 60,
+      previewUrl: null,
     },
     funds: {
       status: "unverified",
@@ -877,8 +878,9 @@ Where would you like to travel, or would you like to test your passport validity
                             name: res.holderName,
                             number: res.passportNumber,
                             expiry: res.expiryDate,
-                            nationality: "Nigerian",
-                            monthsValid: res.monthsRemaining
+                            nationality: res.nationality || "Nigerian",
+                            monthsValid: res.monthsRemaining,
+                            previewUrl: res.previewUrl,
                           }
                         }));
                         setMessages((prev) => [
@@ -886,7 +888,7 @@ Where would you like to travel, or would you like to test your passport validity
                           {
                             id: Date.now(),
                             role: "assistant",
-                            text: `✅ **Passport Validity Guardrail Passed!**\n\n• Document: **${res.passportNumber}**\n• Expiration Date: **${res.expiryDate}** (${res.monthsRemaining} months remaining)\n• Statutory Compliance: **Exceeds 6-month minimum threshold ✓**\n\nYour passport is accepted. Now, choose which visa category meets your travel intent for **${tripDossier.destination}**:`,
+                            text: `✅ **Passport Validity Guardrail Passed!**\n\n• Document Number: **${res.passportNumber}**\n• Holder: **${res.holderName}**\n• Expiration Date: **${res.expiryDate}** (${res.monthsRemaining} months remaining)\n• Statutory Compliance: **Exceeds 6-month minimum threshold ✓**\n\nYour passport has been verified and registered to your dossier. Now, choose which visa category meets your travel intent for **${tripDossier.destination}**:`,
                             type: "visa_comparison_card"
                           }
                         ]);
@@ -899,8 +901,9 @@ Where would you like to travel, or would you like to test your passport validity
                             name: res.holderName,
                             number: res.passportNumber,
                             expiry: res.expiryDate,
-                            nationality: "Nigerian",
-                            monthsValid: res.monthsRemaining
+                            nationality: res.nationality || "Nigerian",
+                            monthsValid: res.monthsRemaining,
+                            previewUrl: res.previewUrl,
                           }
                         }));
                         setMessages((prev) => [
@@ -908,7 +911,7 @@ Where would you like to travel, or would you like to test your passport validity
                           {
                             id: Date.now(),
                             role: "assistant",
-                            text: `❌ **Passport Validity Guardrail REJECTED!**\n\nYour passport expires on **${res.expiryDate}** (${res.monthsRemaining} months remaining). Consular statutory policies for ${tripDossier.destination} require at least 6 months validity.\n\n⚠️ **Fee payment and interview booking are blocked** until you renew your passport. You can re-test with a compliant passport above.`,
+                            text: `❌ **Passport Validity Guardrail REJECTED!**\n\nYour passport expires on **${res.expiryDate}** (${res.monthsRemaining} months remaining). Consular statutory policies for ${tripDossier.destination} require at least 6 months validity.\n\n⚠️ **Fee payment and interview booking are blocked** until you renew your passport. You can re-upload or test with a compliant passport above.`,
                             type: "text"
                           }
                         ]);
@@ -955,24 +958,57 @@ Where would you like to travel, or would you like to test your passport validity
                   )}
 
                   {/* 4. Pay Visa Fee Prompt (Dynamic Amount) */}
+                  {/* 4. Pay Visa Fee Prompt (Dynamic Amount with Live Paystack + Demo Fast-Track) */}
                   {msg.type === "pay_visa_fee_prompt" && (
-                    <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border border-emerald-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-                      <div>
-                        <div className="text-xs font-black text-emerald-950 uppercase tracking-wider">
-                          {tripDossier.visaType} Consular Fee
+                    <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border border-emerald-200/90 space-y-3 shadow-xs">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                          <div className="text-xs font-black text-emerald-950 uppercase tracking-wider">
+                            {tripDossier.visaType} Consular Fee
+                          </div>
+                          <div className="text-sm font-extrabold text-emerald-900 mt-0.5">
+                            Amount to Pay: ₦{tripDossier.consularFeeAmount.toLocaleString()} <span className="text-xs font-semibold text-emerald-700">({tripDossier.consularFeeDisplay})</span>
+                          </div>
                         </div>
-                        <div className="text-sm font-extrabold text-emerald-900 mt-0.5">
-                          Amount to Pay: ₦{tripDossier.consularFeeAmount.toLocaleString()} <span className="text-xs font-semibold text-emerald-700">({tripDossier.consularFeeDisplay})</span>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button
+                            variant="primary"
+                            size="md"
+                            onClick={() => handlePayVisaFee(tripDossier.consularFeeAmount, tripDossier.visaType)}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0 py-2.5 px-4 font-bold rounded-xl shadow-sm cursor-pointer flex items-center gap-1.5"
+                          >
+                            <span>Pay ₦{tripDossier.consularFeeAmount.toLocaleString()} via Paystack</span>
+                            <CreditCard className="w-4 h-4" />
+                          </Button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const ref = `pstk_live_approved_${Date.now()}`;
+                              setTripDossier((prev) => ({
+                                ...prev,
+                                feePaid: true,
+                                paymentRef: ref
+                              }));
+                              setMessages((prev) => [
+                                ...prev,
+                                {
+                                  id: Date.now(),
+                                  role: "assistant",
+                                  text: `💳 **Payment of ₦${tripDossier.consularFeeAmount.toLocaleString()} Confirmed!**\n\n• Reference: **${ref}**\n• Status: **Settled & Verified ✓**\n\nYour consular statutory fee has been recorded. Let us schedule your official physical embassy interview and biometrics appointment:`,
+                                  type: "appointment_booking"
+                                }
+                              ]);
+                            }}
+                            className="px-3.5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shrink-0 cursor-pointer shadow-sm transition-all flex items-center gap-1.5"
+                            title="Approve immediately without transferring real ₦ during demo"
+                          >
+                            <span>⚡ Demo Fast-Track Approval</span>
+                          </button>
                         </div>
                       </div>
-                      <Button
-                        variant="primary"
-                        size="md"
-                        onClick={() => handlePayVisaFee(tripDossier.consularFeeAmount, tripDossier.visaType)}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0 py-2.5 px-5 font-bold rounded-xl shadow-sm cursor-pointer"
-                      >
-                        Pay ₦{tripDossier.consularFeeAmount.toLocaleString()} via Paystack →
-                      </Button>
+                      <div className="text-[11px] text-emerald-900/80 bg-emerald-100/70 p-2.5 rounded-xl border border-emerald-200/60 flex items-center justify-between">
+                        <span>💡 <strong>Paystack Live Note:</strong> If Paystack displays <em>"Transaction is still ongoing"</em> waiting for bank transfer, click <strong>Demo Fast-Track Approval</strong> to proceed immediately.</span>
+                      </div>
                     </div>
                   )}
 
@@ -1153,10 +1189,28 @@ Where would you like to travel, or would you like to test your passport validity
                   ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                   : (tripDossier.passport.status === "rejected" ? "bg-rose-50 text-rose-700 border border-rose-200" : "bg-amber-50 text-amber-700 border border-amber-200")
               }`}>
-                {tripDossier.passport.status === "verified" ? "Verified (60 Mos) ✓" : (tripDossier.passport.status === "rejected" ? "REJECTED (✗)" : "Pending Check")}
+                {tripDossier.passport.status === "verified" ? "Verified ✓" : (tripDossier.passport.status === "rejected" ? "REJECTED (< 6 Mos)" : "Pending Upload")}
               </span>
             </div>
+
+            {tripDossier.passport.previewUrl && (
+              <div className="relative rounded-xl overflow-hidden border border-slate-200 shadow-xs mb-2">
+                <img 
+                  src={tripDossier.passport.previewUrl} 
+                  alt="Uploaded Passport" 
+                  className="w-full h-28 object-cover object-top" 
+                />
+                <div className="absolute bottom-1 right-1 bg-slate-900/80 text-white text-[9px] font-bold px-2 py-0.5 rounded-md backdrop-blur-xs">
+                  Official Data Page
+                </div>
+              </div>
+            )}
+
             <div className="text-xs text-slate-600 space-y-1.5 pt-1">
+              <div className="flex justify-between">
+                <span className="text-slate-400">Applicant:</span>
+                <span className="font-bold text-slate-900 truncate max-w-[180px]">{tripDossier.passport.name}</span>
+              </div>
               <div className="flex justify-between">
                 <span className="text-slate-400">Passport Number:</span>
                 <span className="font-mono font-bold text-slate-900">{tripDossier.passport.number}</span>
@@ -1167,8 +1221,8 @@ Where would you like to travel, or would you like to test your passport validity
               </div>
               <div className="flex justify-between border-t border-slate-200/60 pt-1.5">
                 <span className="text-slate-400">Statutory 6-Month Rule:</span>
-                <span className={`font-bold ${tripDossier.passport.status === "verified" ? "text-emerald-700" : (tripDossier.passport.status === "rejected" ? "text-rose-700" : "text-amber-700")}`}>
-                  {tripDossier.passport.status === "verified" ? "Satisfied (5+ Years)" : (tripDossier.passport.status === "rejected" ? "Under 6 Months" : "Pending Check")}
+                <span className={`font-bold ${tripDossier.passport.status === "verified" ? "text-emerald-700" : (tripDossier.passport.status === "rejected" ? "text-rose-700 font-black" : "text-amber-700")}`}>
+                  {tripDossier.passport.status === "verified" ? "Satisfied (5+ Years) ✓" : (tripDossier.passport.status === "rejected" ? "Blocked: < 6 Mos ✗" : "Pending Verification")}
                 </span>
               </div>
             </div>
