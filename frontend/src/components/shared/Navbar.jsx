@@ -1,6 +1,6 @@
 ﻿import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Plane, Compass, Sparkles, ShieldCheck } from "lucide-react";
+import { Plane, Sparkles, ShieldCheck } from "lucide-react";
 
 export const Navbar = () => {
   const location = useLocation();
@@ -18,7 +18,7 @@ export const Navbar = () => {
           </span>
         </Link>
 
-        {/* Center Navigation - Plain English Roles */}
+        {/* Navigation - Plain English Roles */}
         <nav className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
           <Link
             to="/"
@@ -61,17 +61,6 @@ export const Navbar = () => {
             </span>
           </Link>
         </nav>
-
-        {/* Right CTA */}
-        <div className="flex items-center gap-3">
-          <Link
-            to="/client"
-            className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-brand-600 hover:bg-brand-700 shadow-sm transition-all cursor-pointer"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Plan My Trip</span>
-          </Link>
-        </div>
       </div>
     </header>
   );
