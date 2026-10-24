@@ -1,12 +1,10 @@
 """
 rag_service.py
 ──────────────
-Handles:
-  1. Document ingestion  → parse → chunk → embed (local all-MiniLM-L6-v2) → upsert to ChromaDB
-  2. Query retrieval     → query text → similarity search → return formatted context string
+Handles document ingestion and query retrieval from Qdrant when configured,
+with ChromaDB retained as the local fallback and migration source.
 
-Powered by ChromaDB's local DefaultEmbeddingFunction (all-MiniLM-L6-v2 via ONNX).
-100% offline, zero API quota dependencies, sub-millisecond search speed.
+Embeddings use the same local all-MiniLM-L6-v2 function for both vector stores.
 """
 
 import os
@@ -17,6 +15,7 @@ from pathlib import Path
 import chromadb
 from chromadb.config import Settings as ChromaSettings
 from chromadb.utils import embedding_functions
+from qdrant_client import QdrantClient, models
 
 from app.core.config import settings
 
@@ -24,6 +23,17 @@ from app.core.config import settings
 
 _chroma_client: Optional[chromadb.PersistentClient] = None
 _collection = None
+_qdrant_client: Optional[QdrantClient] = None
+_embedding_function = None
+QDRANT_PAYLOAD_TEXT_KEY = "_rag_text"
+QDRANT_PAYLOAD_CHROMA_ID_KEY = "_chroma_id"
+
+
+def _get_embedding_function():
+    global _embedding_function
+    if _embedding_function is None:
+        _embedding_function = embedding_functions.DefaultEmbeddingFunction()
+    return _embedding_function
 
 
 def get_chroma_client() -> chromadb.PersistentClient:
@@ -40,14 +50,103 @@ def get_collection():
     global _collection
     if _collection is None:
         client = get_chroma_client()
-        # Local all-MiniLM-L6-v2 via ONNX — zero external API calls
-        local_ef = embedding_functions.DefaultEmbeddingFunction()
         _collection = client.get_or_create_collection(
             name=settings.CHROMA_COLLECTION_NAME,
-            embedding_function=local_ef,
+            embedding_function=_get_embedding_function(),
             metadata={"hnsw:space": "cosine"},
         )
     return _collection
+
+
+def get_qdrant_client() -> QdrantClient:
+    global _qdrant_client
+    if not settings.qdrant_enabled:
+        raise RuntimeError(
+            "Qdrant is not configured. Set QDRANT_CLUSTER_ENDPOINT_KEY and QDRANT_API_KEY."
+        )
+    if _qdrant_client is None:
+        endpoint = settings.QDRANT_CLUSTER_ENDPOINT_KEY
+        if not endpoint or not endpoint.startswith("https://"):
+            raise ValueError("QDRANT_CLUSTER_ENDPOINT_KEY must be an HTTPS cluster URL.")
+        _qdrant_client = QdrantClient(
+            url=endpoint,
+            api_key=settings.QDRANT_API_KEY,
+            timeout=30,
+        )
+    return _qdrant_client
+
+
+def _ensure_qdrant_collection(vector_size: int) -> None:
+    client = get_qdrant_client()
+    collection_name = settings.qdrant_collection
+    if not client.collection_exists(collection_name):
+        client.create_collection(
+            collection_name=collection_name,
+            vectors_config=models.VectorParams(
+                size=vector_size,
+                distance=models.Distance.COSINE,
+            ),
+        )
+        return
+
+    info = client.get_collection(collection_name)
+    vectors_config = info.config.params.vectors
+    if isinstance(vectors_config, dict):
+        raise ValueError("Qdrant collection uses named vectors; expected one unnamed vector.")
+    if vectors_config.size != vector_size:
+        raise ValueError(
+            f"Qdrant collection vector size {vectors_config.size} does not match "
+            f"the embedding size {vector_size}."
+        )
+    if vectors_config.distance != models.Distance.COSINE:
+        raise ValueError("Qdrant collection must use cosine distance.")
+
+
+def _qdrant_point_id(chroma_id: str) -> str:
+    return str(uuid.uuid5(uuid.NAMESPACE_URL, f"{settings.CHROMA_COLLECTION_NAME}:{chroma_id}"))
+
+
+def _qdrant_filter(filter_metadata: Optional[Dict[str, str]]):
+    if not filter_metadata:
+        return None
+    return models.Filter(
+        must=[
+            models.FieldCondition(key=key, match=models.MatchValue(value=value))
+            for key, value in filter_metadata.items()
+        ]
+    )
+
+
+def _upsert_qdrant_points(
+    ids: List[str],
+    documents: List[str],
+    metadatas: List[Dict[str, Any]],
+    vectors: List[List[float]],
+) -> None:
+    if not vectors:
+        return
+    _ensure_qdrant_collection(len(vectors[0]))
+    points = []
+    for chroma_id, document, metadata, vector in zip(ids, documents, metadatas, vectors):
+        payload = {
+            key: value
+            for key, value in metadata.items()
+            if value is not None and isinstance(value, (str, int, float, bool, list, dict))
+        }
+        payload[QDRANT_PAYLOAD_TEXT_KEY] = document
+        payload[QDRANT_PAYLOAD_CHROMA_ID_KEY] = chroma_id
+        points.append(
+            models.PointStruct(
+                id=_qdrant_point_id(chroma_id),
+                vector=vector,
+                payload=payload,
+            )
+        )
+    get_qdrant_client().upsert(
+        collection_name=settings.qdrant_collection,
+        points=points,
+        wait=True,
+    )
 
 
 # ── Text chunking ─────────────────────────────────────────────────────────────
@@ -127,22 +226,28 @@ async def ingest_document(
     if not chunks:
         return {"document_id": doc_id, "chunks_created": 0, "source_name": source_name}
 
-    collection = get_collection()
-    collection.upsert(
-        ids=[f"{doc_id}_{i}" for i in range(len(chunks))],
-        documents=chunks,
-        metadatas=[
-            {
+    ids = [f"{doc_id}_{i}" for i in range(len(chunks))]
+    metadatas = [
+        {
                 "document_id": doc_id,
                 "source_name": source_name,
                 "doc_type": doc_type,
                 "business_id": business_id,
                 "chunk_index": i,
                 **metadata_extra,
-            }
-            for i in range(len(chunks))
-        ],
-    )
+        }
+        for i in range(len(chunks))
+    ]
+    if settings.qdrant_enabled:
+        vectors = _get_embedding_function()(chunks)
+        _upsert_qdrant_points(
+            ids=ids,
+            documents=chunks,
+            metadatas=metadatas,
+            vectors=[vector.tolist() for vector in vectors],
+        )
+    else:
+        get_collection().upsert(ids=ids, documents=chunks, metadatas=metadatas)
 
     return {
         "document_id": doc_id,
@@ -169,8 +274,38 @@ async def retrieve_context_with_scores(
     n_results: int = None,
     filter_metadata: Optional[Dict[str, str]] = None,
 ) -> Dict[str, Any]:
-    """Retrieve formatted context together with Chroma cosine distances."""
+    """Retrieve formatted context and cosine distances from the active vector store."""
     n_results = n_results or settings.RAG_TOP_K
+    if settings.qdrant_enabled:
+        query_vector = _get_embedding_function()([query])[0].tolist()
+        client = get_qdrant_client()
+        if not client.collection_exists(settings.qdrant_collection):
+            return {"context": "", "distances": [], "sources": []}
+        response = client.query_points(
+            collection_name=settings.qdrant_collection,
+            query=query_vector,
+            query_filter=_qdrant_filter(filter_metadata),
+            limit=n_results,
+            with_payload=True,
+        )
+        context_blocks = []
+        distances = []
+        sources = []
+        for index, point in enumerate(response.points, start=1):
+            payload = point.payload or {}
+            chunk = payload.get(QDRANT_PAYLOAD_TEXT_KEY)
+            if not isinstance(chunk, str) or not chunk:
+                continue
+            source = payload.get("source_name", "Unknown")
+            context_blocks.append(f"[{index}] Source: {source}\n{chunk}")
+            sources.append(source)
+            distances.append(1.0 - point.score)
+        return {
+            "context": "\n\n".join(context_blocks),
+            "distances": distances,
+            "sources": sources,
+        }
+
     collection = get_collection()
 
     if collection.count() == 0:
@@ -206,9 +341,78 @@ async def retrieve_context_with_scores(
 
 async def get_collection_stats() -> Dict[str, Any]:
     """Returns basic stats about the local knowledge store."""
+    if settings.qdrant_enabled:
+        client = get_qdrant_client()
+        collection_name = settings.qdrant_collection
+        if not client.collection_exists(collection_name):
+            return {
+                "collection_name": collection_name,
+                "total_chunks": 0,
+                "provider": "qdrant",
+            }
+        info = client.get_collection(collection_name)
+        return {
+            "collection_name": collection_name,
+            "total_chunks": info.points_count or 0,
+            "provider": "qdrant",
+        }
+
     collection = get_collection()
     return {
         "collection_name": settings.CHROMA_COLLECTION_NAME,
         "total_chunks": collection.count(),
         "persist_path": settings.CHROMA_PERSIST_PATH,
+        "provider": "chroma",
+    }
+
+
+def migrate_chroma_to_qdrant(batch_size: int = 256) -> Dict[str, Any]:
+    """Copy all Chroma documents, metadata, and vectors into the configured Qdrant collection."""
+    if not settings.qdrant_enabled:
+        raise RuntimeError(
+            "Qdrant is not configured. Set QDRANT_CLUSTER_ENDPOINT_KEY and QDRANT_API_KEY."
+        )
+
+    collection = get_collection()
+    total = collection.count()
+    if total == 0:
+        return {
+            "source_collection": settings.CHROMA_COLLECTION_NAME,
+            "target_collection": settings.qdrant_collection,
+            "points_migrated": 0,
+        }
+
+    first_batch = collection.get(
+        limit=min(batch_size, total),
+        include=["documents", "metadatas", "embeddings"],
+    )
+    embeddings = first_batch["embeddings"]
+    if embeddings is None or len(embeddings) == 0:
+        raise RuntimeError("Chroma returned no stored embeddings; migration was not started.")
+    _ensure_qdrant_collection(len(embeddings[0]))
+
+    migrated = 0
+    for offset in range(0, total, batch_size):
+        batch = first_batch if offset == 0 else collection.get(
+            limit=min(batch_size, total - offset),
+            offset=offset,
+            include=["documents", "metadatas", "embeddings"],
+        )
+        documents = batch["documents"] or []
+        metadatas = batch["metadatas"] or [{} for _ in documents]
+        vectors = batch["embeddings"]
+        if vectors is None or len(vectors) != len(documents):
+            raise RuntimeError(f"Chroma returned incomplete vectors at offset {offset}.")
+        _upsert_qdrant_points(
+            ids=batch["ids"],
+            documents=documents,
+            metadatas=metadatas,
+            vectors=[vector.tolist() for vector in vectors],
+        )
+        migrated += len(documents)
+
+    return {
+        "source_collection": settings.CHROMA_COLLECTION_NAME,
+        "target_collection": settings.qdrant_collection,
+        "points_migrated": migrated,
     }

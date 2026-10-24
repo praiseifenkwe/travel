@@ -30,25 +30,27 @@ app.include_router(audit_tickets.router, prefix="/api")
 @app.on_event("startup")
 async def startup_event():
     from app.core.database import init_db
-    from app.services.rag_service import get_collection, get_collection_stats, ingest_document
+    from app.services.rag_service import get_collection_stats, ingest_document
     from app.services.rule_store import get_active_rules, list_drafts
     from pathlib import Path
     
     init_db()  # Create PostgreSQL tables & seed trusted sources
-    get_collection()  # Initialise ChromaDB collection on startup
     stats = await get_collection_stats()
     
     # Auto-bootstrap if vector store is empty
     if stats["total_chunks"] == 0:
         dump_path = Path(__file__).resolve().parent / "data" / "raw_data" / "wakanow_dump.txt"
         if dump_path.exists():
-            print(f"📦 ChromaDB empty on startup — auto-ingesting {dump_path.name}...")
+            print(f"📦 Vector store empty on startup — auto-ingesting {dump_path.name}...")
             await ingest_document(str(dump_path), source_name=dump_path.name, doc_type="policy")
             stats = await get_collection_stats()
 
     active_rules = get_active_rules()
     pending_drafts = [d for d in list_drafts() if not d.is_complete]
-    print(f"✅ ChromaDB ready — collection '{stats['collection_name']}' | {stats['total_chunks']} chunks indexed")
+    print(
+        f"✅ {stats['provider'].capitalize()} ready — "
+        f"collection '{stats['collection_name']}' | {stats['total_chunks']} chunks indexed"
+    )
     print(f"✅ Rules engine — {len(active_rules)} active rules | {len(pending_drafts)} drafts awaiting operator input")
 
 

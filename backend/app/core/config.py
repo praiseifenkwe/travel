@@ -45,11 +45,22 @@ class Settings(BaseSettings):
     CHROMA_PERSIST_PATH: str = "./chroma_storage"
     CHROMA_COLLECTION_NAME: str = "business_knowledge"
     RAG_DISTANCE_THRESHOLD: float = 0.55  # Chroma cosine distance; lower is a closer match
+    QDRANT_API_KEY: Optional[str] = None
+    QDRANT_CLUSTER_ENDPOINT_KEY: Optional[str] = None
+    QDRANT_COLLECTION_NAME: Optional[str] = None
 
     # LLM
     CHAT_MODEL: str = "gemini-1.5-flash"
     AUDIT_MODEL: str = "gemini-1.5-flash"
     RAG_TOP_K: int = 5                  # How many chunks to retrieve per query
+
+    @property
+    def qdrant_enabled(self) -> bool:
+        return bool(self.QDRANT_API_KEY and self.QDRANT_CLUSTER_ENDPOINT_KEY)
+
+    @property
+    def qdrant_collection(self) -> str:
+        return self.QDRANT_COLLECTION_NAME or self.CHROMA_COLLECTION_NAME
 
     class Config:
         env_file = ".env"
