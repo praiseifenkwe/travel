@@ -31,7 +31,7 @@ _ROUTE_DESTINATION_RE = re.compile(
 )
 _UK_DESTINATION_RE = re.compile(
     r"\b(uk|united kingdom|britain|england|scotland|wales|ukvi|"
-    r"gov\.uk|home office|asylum|refugee|settlement|ilr|brp|british|"
+    r"gov\.uk|home office|asylum|refugee?s?|settle(?:ment)?|ilr|brp|british|"
     r"london|manchester|birmingham|edinburgh|cardiff|belfast)\b",
     re.IGNORECASE,
 )
@@ -308,6 +308,7 @@ async def resolve_whitelisted_fallback(query: str) -> Optional[Dict[str, Any]]:
         if preferred_domain == "gov.uk":
             clean_search = re.sub(r"Destination jurisdiction:.*$", "", query, flags=re.IGNORECASE).strip()
             clean_search = re.sub(r"^(?:can u |can you |please |let'?s? talk about |tell me about |what is |how about )?(?:the )?(?:search |look up |check )?(?:gov\.uk )?(?:about |for )?", "", clean_search, flags=re.IGNORECASE).strip()
+            clean_search = re.sub(r"\brefuge\b", "refugee", clean_search, flags=re.IGNORECASE)
             clean_search = clean_search or query
             try:
                 async with httpx.AsyncClient(timeout=5.0, headers={"User-Agent": "TravelForge-Compliance-Verifier/2.0"}) as search_client:

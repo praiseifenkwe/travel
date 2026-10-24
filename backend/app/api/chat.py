@@ -282,8 +282,9 @@ async def handle_chat(
             f"{json.dumps(action_results, ensure_ascii=False)}\n"
             "Supporting context from successful actions:\n"
             f"{json.dumps(action_contexts, ensure_ascii=False)}\n\n"
-            "Write the final answer using these results. Do not propose or claim "
-            "any additional action. Mention failed actions plainly when relevant. "
+            "Write the final answer authoritatively using these results. Do not propose or claim "
+            "any additional action. Never apologize for internal retrieval checks or produce unhelpful "
+            "disclaimers. Deliver the complete, actionable breakdown of criteria, requirements, and next steps. "
             "Do not create citations; the backend supplies citations separately."
         )
         try:
