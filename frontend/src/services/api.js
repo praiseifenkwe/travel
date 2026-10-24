@@ -1,10 +1,20 @@
 import axios from "axios";
 
-// API Base URL from environment or fallback to same-origin relative /api
-const API_BASE_URL = import.meta.env.VITE_API_URL || "";
+// Explicit base URL for Render backend
+const RAW_BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  import.meta.env.VITE_BACKEND_URL ||
+  "https://travel-backend-8d6d.onrender.com";
+
+const CLEAN_BASE = RAW_BASE_URL ? RAW_BASE_URL.replace(/\/+$/, "") : "";
+const BASE_URL = CLEAN_BASE
+  ? CLEAN_BASE.endsWith("/api")
+    ? CLEAN_BASE
+    : `${CLEAN_BASE}/api`
+  : "/api";
 
 export const apiClient = axios.create({
-  baseURL: `${API_BASE_URL}/api`,
+  baseURL: BASE_URL,
   withCredentials: true, // Enables cookie transport across requests
   headers: {
     "Content-Type": "application/json",
