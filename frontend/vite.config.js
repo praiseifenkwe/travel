@@ -8,7 +8,7 @@ export default defineConfig({
     host: 'localhost',
     proxy: {
       '/api': {
-        target: 'https://travel-backend-rosy-rho.vercel.app',
+        target: 'https://travel-backend-8d6d.onrender.com',
         changeOrigin: true,
         secure: false,
         headers: {
@@ -34,7 +34,7 @@ export default defineConfig({
         },
       },
       '/socket.io': {
-        target: 'https://travel-backend-rosy-rho.vercel.app',
+        target: 'https://travel-backend-8d6d.onrender.com',
         ws: true,
         changeOrigin: true,
       },
