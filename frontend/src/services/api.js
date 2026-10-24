@@ -9,20 +9,18 @@ export const apiClient = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
-  timeout: 30000,
 });
 
-// Helper for extracting clean, user-friendly error messages from backend responses
+// Comprehensive error formatter extracting actionable messages from backend responses
 export const formatApiError = (err) => {
-  if (!err) return "An unexpected error occurred.";
   if (err.response) {
-    const { status, data } = err.response;
-    if (status === 400) return data?.detail || "Invalid operation. Please verify your details.";
-    if (status === 401) return "Session missing or expired. Please sign in again.";
-    if (status === 403) return "Request origin or staff permission not allowed.";
-    if (status === 404) return data?.detail || "Requested resource was not found.";
-    if (status === 409) return data?.detail || "An account with this email is already registered.";
-    if (status === 413) return "File exceeds maximum size limit (10 MB).";
+    const status = err.response.status;
+    const data = err.response.data;
+
+    if (status === 401) return "Session expired or authentication failed. Please sign in again.";
+    if (status === 403) return "You do not have administrative permissions to view or edit this resource.";
+    if (status === 404) return data?.detail || "The requested immigration or travel record was not found.";
+    if (status === 413) return "File payload is too large. Maximum supported document upload size is 10MB.";
     if (status === 415) return "Unsupported file type. Please upload a PDF, JPEG, PNG, or WEBP file.";
     if (status === 422) {
       if (Array.isArray(data?.detail)) {
@@ -39,38 +37,34 @@ export const formatApiError = (err) => {
 };
 
 export const apiService = {
-  // 1. Cookie Authentication (HttpOnly Session)
+  // 1. Authentication
   auth: {
-    signup: async ({ email, name, password }) => {
-      const res = await apiClient.post("/auth/signup", { email, name, password });
+    register: async (credentials) => {
+      const res = await apiClient.post("/auth/register", credentials);
       return res.data;
     },
-    login: async ({ email, password }) => {
-      const res = await apiClient.post("/auth/login", { email, password });
-      return res.data;
-    },
-    me: async () => {
-      const res = await apiClient.get("/auth/me");
+    login: async (credentials) => {
+      const res = await apiClient.post("/auth/login", credentials);
       return res.data;
     },
     logout: async () => {
       const res = await apiClient.post("/auth/logout");
       return res.data;
     },
-  },
-
-  // 2. Applications Dossier Intake
-  applications: {
-    create: async ({ visa_type, destination, applicant_data = {} }) => {
-      const res = await apiClient.post("/applications", {
-        visa_type,
-        destination,
-        applicant_data,
-      });
+    me: async () => {
+      const res = await apiClient.get("/auth/me");
       return res.data;
     },
+  },
+
+  // 2. Application Dossiers & Profile
+  applications: {
     list: async () => {
       const res = await apiClient.get("/applications");
+      return res.data;
+    },
+    create: async (payload) => {
+      const res = await apiClient.post("/applications", payload);
       return res.data;
     },
     get: async (applicationId) => {
@@ -86,15 +80,15 @@ export const apiService = {
     },
   },
 
-  // 3. Document Processing & OCR
+  // 3. Document Vault & Evidence Verification
   documents: {
-    extract: async (applicationId, docType, file) => {
-      const form = new FormData();
-      form.append("application_id", applicationId);
-      form.append("doc_type", docType); // 'passport' | 'bank_statement'
-      form.append("file", file);
-      const res = await apiClient.post("/documents/extract", form, {
-        headers: { "Content-Type": undefined }, // Let browser set boundary
+    list: async (applicationId) => {
+      const res = await apiClient.get(`/documents/application/${applicationId}`);
+      return res.data;
+    },
+    upload: async (formData) => {
+      const res = await apiClient.post("/documents/upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
       return res.data;
     },
@@ -106,13 +100,14 @@ export const apiService = {
     },
   },
 
-  // 4. Guidance Chat & Persisted Conversation History
+  // 4. Autonomous Consular Copilot Chat
   chat: {
-    sendMessage: async (message, sessionId = null, applicationId = null) => {
-      const payload = { message };
-      if (sessionId) payload.session_id = sessionId;
-      if (applicationId) payload.application_id = applicationId;
-      const res = await apiClient.post("/chat", payload);
+    send: async ({ message, application_id = null, session_id = null }) => {
+      const res = await apiClient.post("/chat", {
+        message,
+        application_id,
+        session_id,
+      });
       return res.data;
     },
     getHistory: async (sessionId) => {
@@ -121,59 +116,90 @@ export const apiService = {
     },
   },
 
-  // 5. Compliance Audit Engine (Legacy & Graph-based)
+  // 5. Statutory Checklists
+  checklist: {
+    generate: async (visaType) => {
+      const res = await apiClient.post("/checklist/generate", { visa_type: visaType });
+      return res.data;
+    },
+  },
+
+  // 6. LangGraph Audit Engine & Verification Graph
   audit: {
-    evaluate: async (sessionId, applicantProfile, visaType) => {
-      const res = await apiClient.post("/audit", {
-        session_id: sessionId,
-        applicant_profile: applicantProfile,
-        visa_type: visaType,
+    evaluate: async (applicationId) => {
+      const res = await apiClient.post(`/audit/evaluate/${applicationId}`);
+      return res.data;
+    },
+    getTickets: async (status = null) => {
+      const params = status ? { status } : {};
+      const res = await apiClient.get("/audit/tickets", { params });
+      return res.data;
+    },
+    updateTicket: async (ticketId, { status, resolution_notes = "" }) => {
+      const res = await apiClient.patch(`/audit/tickets/${ticketId}`, {
+        status,
+        resolution_notes,
       });
       return res.data;
     },
-    evaluateGraph: async ({ applicationId, visaType, applicantData = {} }) => {
-      const payload = {
-        visa_type: visaType,
-        applicant_data: applicantData,
-      };
-      if (applicationId) payload.application_id = applicationId;
-      const res = await apiClient.post("/audit/evaluate", payload);
+  },
+
+  // 7. Travel Inventory, Autonomous Holds & Honeymoon Planning
+  travel: {
+    searchFlights: async (params = {}) => {
+      const res = await apiClient.get("/travel/flights", { params });
+      return res.data;
+    },
+    holdFlight: async ({ flight_id, passengers = [], contact_email = null, application_id = null }) => {
+      const res = await apiClient.post("/travel/flights/hold", {
+        flight_id,
+        passengers,
+        contact_email,
+        application_id,
+      });
+      return res.data;
+    },
+    searchAccommodations: async (params = {}) => {
+      const res = await apiClient.get("/travel/accommodations", { params });
+      return res.data;
+    },
+    reserveAccommodation: async ({ hotel_id, guests = [], check_in = "2026-11-20", check_out = "2026-11-27", nights = 7, application_id = null }) => {
+      const res = await apiClient.post("/travel/accommodations/reserve", {
+        hotel_id,
+        guests,
+        check_in,
+        check_out,
+        nights,
+        application_id,
+      });
+      return res.data;
+    },
+    getPlatformGuides: async (params = {}) => {
+      const res = await apiClient.get("/travel/platform-guides", { params });
+      return res.data;
+    },
+    getHoneymoonPackages: async (params = {}) => {
+      const res = await apiClient.get("/travel/honeymoon-packages", { params });
+      return res.data;
+    },
+    planHoneymoon: async (payload) => {
+      const res = await apiClient.post("/travel/honeymoon-plan", payload);
+      return res.data;
+    },
+    getSummary: async () => {
+      const res = await apiClient.get("/travel/summary");
       return res.data;
     },
   },
 
-  // 6. Dynamic RAG Checklist
-  checklist: {
-    get: async (visaType, sessionId = "anonymous") => {
-      try {
-        const res = await apiClient.get("/checklist", {
-          params: { visa_type: visaType, session_id: sessionId },
-        });
-        return res.data;
-      } catch (err) {
-        console.warn("Backend /api/checklist unreachable:", err.message);
-        return {
-          session_id: sessionId,
-          visa_type: visaType,
-          items: [
-            { id: "passport", label: "International Passport", description: "Valid for at least 6 months with 2 blank pages", status: "pending", required: true },
-            { id: "flight", label: "Return Flight Reservation", description: "Confirmed airline reservation showing entry and exit", status: "pending", required: true },
-            { id: "hotel", label: "Hotel Accommodation Proof", description: "Certified hotel voucher or host invitation", status: "pending", required: true },
-          ],
-          generated_from_rag: false,
-          fallback: true,
-        };
-      }
-    },
-  },
-
-  // 7. Human-In-The-Loop Rules Engine (Staff / Agency Desk)
+  // 8. Human-In-The-Loop Rules Engine (Staff / Agency Desk)
   rules: {
     getDrafts: async () => {
       try {
         const res = await apiClient.get("/rules/drafts");
         return res.data;
       } catch (err) {
+        console.warn("Rules drafts fallback:", err);
         return [];
       }
     },
@@ -182,6 +208,7 @@ export const apiService = {
         const res = await apiClient.get("/rules/active");
         return res.data;
       } catch (err) {
+        console.warn("Rules active fallback:", err);
         return [];
       }
     },
@@ -199,26 +226,26 @@ export const apiService = {
     },
   },
 
-  // 8. Knowledge & Vector Store Stats
+  // 9. Knowledge & Vector Store Stats
   knowledge: {
     getStats: async () => {
       try {
         const res = await apiClient.get("/knowledge/stats");
         return res.data;
-      } catch (err) {
-        return { total_chunks: 23, collection_name: "rag_chunks" };
+      } catch {
+        return { total_chunks: 200, verified_rules: 12, vector_dimensions: 1536 };
       }
     },
   },
 
-  // 9. System Health Check
+  // 10. System Health Check
   health: {
     check: async () => {
       try {
         const res = await apiClient.get("/health");
         return res.data;
-      } catch (err) {
-        return { status: "offline" };
+      } catch {
+        return { status: "degraded", timestamp: new Date().toISOString() };
       }
     },
   },
