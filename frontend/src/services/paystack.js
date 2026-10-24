@@ -16,7 +16,7 @@ export const openPaystackPopup = ({
 }) => {
   const paystackKey =
     import.meta.env.VITE_PAYSTACK_PUBLIC_KEY ||
-    "pk_live_ef0b68230a8ac1631ebceb6a613000203a1a1f7e";
+    "pk_test_4b6a2b6396840e8e800f5a7c9cce3e1b005fe0ff";
 
   const cleanupDemoHelper = () => {
     const existing = document.getElementById("paystack-demo-helper");
@@ -40,7 +40,7 @@ export const openPaystackPopup = ({
         <div style="display: flex; align-items: center; gap: 8px;">
           <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #10B981; box-shadow: 0 0 10px #10B981;"></span>
           <div>
-            <div style="font-size: 11px; font-weight: 800; color: #38BDF8; letter-spacing: 0.5px; text-transform: uppercase;">Paystack Live Gateway Active</div>
+            <div style="font-size: 11px; font-weight: 800; color: #38BDF8; letter-spacing: 0.5px; text-transform: uppercase;">Paystack Test Gateway Active</div>
             <div style="font-size: 12px; font-weight: 500; color: #E2E8F0;">Stuck on "Transaction is still ongoing"? Demo without sending real ₦:</div>
           </div>
         </div>
