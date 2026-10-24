@@ -4,9 +4,14 @@ database.py
 PostgreSQL Database connection & session management for TravelForge.
 """
 
+from sqlalchemy import text
 from sqlmodel import SQLModel, create_engine, Session, select
 from app.core.config import settings
 from app.models.trusted_sources import TrustedSource, AuditTicket
+from app.models.rag_chunk import RAGChunk
+from app.models.accounts import User, UserSession, ChatSession, ChatMessage
+from app.models.applications import Application, ApplicationDocument
+from app.models.rules import RuleDraftRecord, ActiveRuleRecord
 
 # Convert asyncpg URL to psycopg2 URL for synchronous operations
 db_url = settings.DATABASE_URL
@@ -29,8 +34,32 @@ def get_session():
 
 
 def init_db():
-    """Create tables and seed default trusted whitelisted sources."""
+    """Install pgvector, create application tables, and seed trusted sources."""
+    with engine.begin() as connection:
+        connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
     SQLModel.metadata.create_all(engine)
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "ALTER TABLE application_documents "
+                "ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ"
+            )
+        )
+        connection.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_rag_chunks_embedding_hnsw "
+                "ON rag_chunks USING hnsw (embedding vector_cosine_ops)"
+            )
+        )
+        try:
+            connection.execute(
+                text(
+                    "UPDATE trusted_sources SET can_answer_autonomously = TRUE "
+                    "WHERE domain IN ('gov.uk', 'travel.state.gov') OR trust_level = 'gold'"
+                )
+            )
+        except Exception:
+            pass
     
     with Session(engine) as session:
         # Check if already seeded

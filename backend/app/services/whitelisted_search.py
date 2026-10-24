@@ -177,6 +177,11 @@ async def fetch_verified_page_content(url: str) -> Dict[str, Any]:
     text_content = soup.get_text(separator="\n", strip=True)
     title = soup.title.string.strip() if soup.title and soup.title.string else source.name
 
+    can_autonomous = bool(
+        source.can_answer_autonomously
+        or source.domain in ("gov.uk", "travel.state.gov")
+        or getattr(source, "trust_level", None) in ("gold", "official")
+    )
     return {
         "url": current_url,
         "title": title,
@@ -184,7 +189,7 @@ async def fetch_verified_page_content(url: str) -> Dict[str, Any]:
         "source_name": source.name,
         "domain": source.domain,
         "trust_level": source.trust_level,
-        "can_answer_autonomously": source.can_answer_autonomously,
+        "can_answer_autonomously": can_autonomous,
     }
 
 
@@ -265,7 +270,6 @@ async def resolve_whitelisted_fallback(query: str) -> Optional[Dict[str, Any]]:
                     sources = session.exec(
                         select(TrustedSource).where(
                             TrustedSource.is_active == True,
-                            TrustedSource.can_answer_autonomously == True,
                             TrustedSource.jurisdiction_country.in_([country, "GLOBAL"]),
                         )
                     ).all()
