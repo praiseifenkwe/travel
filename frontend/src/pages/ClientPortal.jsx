@@ -496,8 +496,59 @@ To begin, please select your travel destination or upload your international pas
       return;
     }
 
-    // 1. Destination Intent: United States
-    if (lower.includes("united states") || lower.includes("usa") || lower.includes("us ") || lower.includes("america") || lower.includes("new york")) {
+    // 1. Flight & Hotel Logistics Intent (High Priority - Prevents Destination Reset)
+    if (
+      lower.includes("flight") ||
+      lower.includes("hotel") ||
+      lower.includes("accommodation") ||
+      lower.includes("airline") ||
+      lower.includes("ticket") ||
+      lower.includes("pnr") ||
+      lower.includes("voucher") ||
+      lower.includes("proof of stay") ||
+      lower.includes("unlock direct") ||
+      lower.includes("direct flights")
+    ) {
+      setTimeout(() => {
+        setIsTyping(false);
+        if ((lower.includes("hotel") || lower.includes("accommodation") || lower.includes("stay")) && !lower.includes("flight")) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: Date.now() + 1,
+              role: "assistant",
+              text: `🏨 **Certified Consular Accommodations for ${tripDossier.destination}**\n\nHere are verified hotel properties from our database with official Proof-of-Stay vouchers recognized by consular authorities for your visa:`,
+              type: "hotel_selection"
+            }
+          ]);
+        } else {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: Date.now() + 1,
+              role: "assistant",
+              text: `✈️ **Consular Flight Routing for ${tripDossier.destination}**\n\nI have queried our verified GDS flight database for flights from **Lagos (LOS)** to **${tripDossier.destination}**.\n\n• **Baggage**: 2 × 23kg Checked Bags Included ✓\n• **Consular PNR Hold**: 72-hour official reservation lock for visa validation.\n\nSelect your preferred flight below:`,
+              type: "flight_selection"
+            }
+          ]);
+        }
+      }, 600);
+      return;
+    }
+
+    // 2. Destination Intent: United States
+    const isUsDestination =
+      lower.startsWith("travel to") ||
+      lower.includes("travel to the united states") ||
+      lower.includes("travel to united states") ||
+      lower === "united states" ||
+      lower === "usa" ||
+      lower === "us" ||
+      lower === "new york" ||
+      lower.includes("destination: us") ||
+      lower.includes("destination: united states");
+
+    if (isUsDestination || (!tripDossier.destination && (lower.includes("united states") || lower.includes("usa") || lower.includes("new york")))) {
       setTimeout(() => {
         setIsTyping(false);
         setTripDossier((prev) => ({
@@ -523,8 +574,18 @@ To begin, please select your travel destination or upload your international pas
       return;
     }
 
-    // 2. Destination Intent: United Kingdom
-    if (lower.includes("united kingdom") || lower.includes("uk") || lower.includes("london") || lower.includes("britain")) {
+    // 3. Destination Intent: United Kingdom
+    const isUkDestination =
+      lower.startsWith("travel to") ||
+      lower.includes("travel to the united kingdom") ||
+      lower.includes("travel to united kingdom") ||
+      lower === "united kingdom" ||
+      lower === "uk" ||
+      lower === "london" ||
+      lower.includes("destination: uk") ||
+      lower.includes("destination: united kingdom");
+
+    if (isUkDestination || (!tripDossier.destination && (lower.includes("united kingdom") || lower.includes("uk") || lower.includes("london")))) {
       setTimeout(() => {
         setIsTyping(false);
         setTripDossier((prev) => ({
@@ -550,7 +611,7 @@ To begin, please select your travel destination or upload your international pas
       return;
     }
 
-    // 3. Travel Purpose Intent -> Recommend matching visa & request bank statement
+    // 4. Travel Purpose Intent -> Recommend matching visa & request bank statement
     if (lower.includes("tourism") || lower.includes("vacation") || lower.includes("visit") || lower.includes("work") || lower.includes("japa") || lower.includes("relocat") || lower.includes("study") || lower.includes("student") || lower.includes("business")) {
       setTimeout(() => {
         setIsTyping(false);
@@ -608,7 +669,7 @@ To begin, please select your travel destination or upload your international pas
       return;
     }
 
-    // 4. Default Assistant Response
+    // 5. Default Assistant Response
     setTimeout(() => {
       setIsTyping(false);
       setMessages((prev) => [
@@ -619,8 +680,8 @@ To begin, please select your travel destination or upload your international pas
           text: `I'm here to assist with your relocation intake for **${tripDossier.destination}**. What would you like to do next?`,
           type: "text",
           options: [
-            "🇬🇧 Travel to United Kingdom",
-            "🇺🇸 Travel to United States",
+            "✈️ Show Direct Flights",
+            "🏨 Show Certified Hotels",
             "➕ Start New Session"
           ]
         }
