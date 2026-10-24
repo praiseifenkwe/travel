@@ -32,7 +32,8 @@ import {
   Ticket,
   Building2,
   CreditCard,
-  Award
+  Award,
+  Lock
 } from "lucide-react";
 import { Button } from "../components/shared/Button";
 import { Link } from "react-router-dom";
