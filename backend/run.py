@@ -1,6 +1,12 @@
-import uvicorn
+﻿import uvicorn
 import os
+import sys
 from dotenv import load_dotenv
+
+if sys.stdout and hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+if sys.stderr and hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8")
 
 load_dotenv()
 
