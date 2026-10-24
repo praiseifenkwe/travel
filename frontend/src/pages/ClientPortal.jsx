@@ -33,21 +33,20 @@ import {
   Building2,
   CreditCard,
   Award,
-  Lock
+  Lock,
+  ExternalLink
 } from "lucide-react";
 import { Button } from "../components/shared/Button";
 import { Link } from "react-router-dom";
 import { apiService, formatApiError } from "../services/api";
+import { openPaystackPopup } from "../services/paystack";
 import { useAuth } from "../context/AuthContext";
-
-import { PaystackModal } from "../components/shared/PaystackModal";
-import { DemoFlowBar } from "../components/shared/DemoFlowBar";
-import { BankStatementCard } from "../components/chat/BankStatementCard";
 import { VisaComparisonCard } from "../components/chat/VisaComparisonCard";
+import { BankStatementCard } from "../components/chat/BankStatementCard";
 import { AppointmentCard } from "../components/chat/AppointmentCard";
 import { VisaApprovalCard } from "../components/chat/VisaApprovalCard";
-import { HotelCards } from "../components/accommodations/HotelCards";
 import { FlightCards } from "../components/flights/FlightCards";
+import { HotelCards } from "../components/accommodations/HotelCards";
 
 export const ClientPortal = () => {
   const { user, openAuthModal } = useAuth();
@@ -55,66 +54,70 @@ export const ClientPortal = () => {
   const appStorageKey = user ? `travelforge_app_${user.id}` : "travelforge_app_guest";
   const [sessionId, setSessionId] = useState(() => localStorage.getItem(storageKey) || null);
   const [applicationId, setApplicationId] = useState(() => localStorage.getItem(appStorageKey) || null);
-  const [activeStep, setActiveStep] = useState(1);
+  
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const [scanningPassport, setScanningPassport] = useState(false);
-
-  // Paystack Modal State
-  const [paystackOpen, setPaystackOpen] = useState(false);
-  const [paystackAmount, setPaystackAmount] = useState(380000);
-  const [paystackPurpose, setPaystackPurpose] = useState("visa_fee");
-  const [paystackTitle, setPaystackTitle] = useState("UK Standard Visitor Visa Fee");
-  const [paystackCallback, setPaystackCallback] = useState(null);
-
+  const [isUploadingDoc, setIsUploadingDoc] = useState(false);
+  const [fileError, setFileError] = useState(null);
+  const [previewDossierModal, setPreviewDossierModal] = useState(false);
   const chatEndRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // Live Trip Dossier State
+  // Live Dossier State
   const [tripDossier, setTripDossier] = useState({
     destination: "London, United Kingdom",
     countryCode: "GB",
     flag: "🇬🇧",
     dates: "14 Nov – 28 Nov 2026",
-    purpose: "Holiday & Tourism",
     visaType: "UK Standard Visitor Visa",
-    processingTime: "3 to 4 Business Weeks",
-    consularFeeGbp: 115,
-    consularFeeNgn: 241500,
+    visaCategory: "visitor",
+    consularFee: "£115 (₦241,500)",
+    feePaid: false,
+    paymentRef: null,
     passport: {
-      status: "pending",
-      name: "",
-      number: "",
-      expiry: "",
-      nationality: "Nigerian"
+      status: "unverified",
+      name: "Tunde Babatunde Adeyemi",
+      number: "A12345678",
+      expiry: "14 Nov 2031",
+      nationality: "Nigerian",
+      monthsValid: 60,
     },
-    bankStatement: {
-      status: "pending",
-      averageBalanceNgn: 8550000,
-      meetsThreshold: true
+    funds: {
+      status: "unverified",
+      averageBalanceNgn: 8850000,
+      thresholdGbp: 1270,
+      thresholdNgn: 2667000,
+      surplusNgn: 6183000,
+      monthsAnalyzed: 6,
     },
     appointment: {
       status: "pending",
       center: "",
       date: "",
       time: "",
-      gwfRef: ""
+      gwfRef: "",
+    },
+    visaDecision: {
+      status: "pending", // pending, approved
+      vignetteNumber: "",
+      validFrom: "",
+      validTo: "",
     },
     flight: {
-      status: "pending",
+      status: "pending", // pending, held, paid
       airline: "",
-      flightNumber: "",
-      route: "",
-      dates: "",
+      flightNo: "",
       pnr: "",
-      price: ""
+      route: "",
+      amountNgn: 1850000,
     },
     hotel: {
-      status: "pending",
+      status: "pending", // pending, paid
       name: "",
       location: "",
-      reference: "",
-      nights: ""
+      voucherRef: "",
+      nights: "",
+      amountNgn: 640000,
     }
   });
 
@@ -123,12 +126,18 @@ export const ClientPortal = () => {
     {
       id: 1,
       role: "assistant",
-      text: `Hello Tunde. Welcome to your TravelForge consular intake workspace.
+      text: `Hello Tunde! Welcome to your TravelForge consular intake workspace.
 
-I will guide you step-by-step through obtaining your visa, verifying your 6-month bank statement, booking your VFS biometrics, and locking your flights and hotels with zero manual forms.
+I am your autonomous Consular & Relocation Concierge. I will guide you through your visa eligibility, verify your passport and 6-month bank statements, schedule your VFS biometrics appointment, and secure direct flight holds and certified hotel vouchers.
 
-Let us begin with Step 1: Let us inspect your international passport to confirm validity of 6+ months.`,
-      type: "step1_passport"
+Where would you like to travel, or would you like to start by inspecting your passport?`,
+      type: "text",
+      options: [
+        "🇬🇧 Travel to the UK (Vacation / Tourism)",
+        "💼 Relocate to the UK for Skilled Work ('Japa')",
+        "🎓 Study in the UK (Student Visa)",
+        "📄 Verify My Passport Validity (A12345678)"
+      ]
     }
   ]);
 
@@ -138,381 +147,293 @@ Let us begin with Step 1: Let us inspect your international passport to confirm 
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isTyping, scanningPassport]);
+  }, [messages, isTyping, isUploadingDoc]);
 
-  // Execute Step 1: Passport Verification
-  const executePassportVerification = () => {
-    setScanningPassport(true);
-    setTimeout(() => {
-      setScanningPassport(false);
-      setTripDossier((prev) => ({
-        ...prev,
-        passport: {
-          status: "verified",
-          name: "Tunde Babatunde Adeyemi",
-          number: "A12345678",
-          expiry: "14 Nov 2031",
-          nationality: "Nigerian"
-        }
-      }));
-      setActiveStep(2);
+  // Handle Document Upload with Strict Format Verification
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setFileError(null);
 
+    // Validate format: PDF, PNG, JPG, JPEG, WEBP
+    const allowedTypes = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
+    const allowedExtensions = [".pdf", ".jpg", ".jpeg", ".png", ".webp"];
+    const fileExt = "." + file.name.split(".").pop().toLowerCase();
+
+    if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(fileExt)) {
+      setFileError(`Unsupported format "${file.name}". Please upload documents in PDF, JPG, or PNG format.`);
       setMessages((prev) => [
         ...prev,
         {
           id: Date.now(),
           role: "assistant",
-          text: `✅ **Step 1 PASSPORT VERIFIED & ICAO 9303 COMPLIANT**
+          text: `⚠️ **Unsupported Document Format**
 
-• **Holder:** Tunde Babatunde Adeyemi
-• **Passport No:** A12345678 (Nigerian Standard)
-• **Expiry:** 14 Nov 2031
-• **Validity Check:** **PASSED** (Exceeds mandatory 6-month rule with 5+ years remaining!)
-• **MRZ Checksum:** Valid ✓
-
---- 
-**Step 2: What is your primary reason for travel?**
-(Select an option or type your reason below):`,
-          type: "step2_reason",
-          options: [
-            "🏖️ Tourism, Holiday & Family Visit",
-            "💼 Skilled Work & Tech Job Relocation (Japa)",
-            "🎓 Higher Studies (Undergraduate / Masters)",
-            "🤝 Short Business Meetings & Conferences"
-          ]
+The uploaded file **"${file.name}"** is not in an accepted consular format. Please upload official documents in **PDF**, **JPG**, or **PNG** format (max 10MB).`,
+          type: "text",
         }
       ]);
-    }, 700);
-  };
-
-  // Execute Step 2: Handle Travel Reason Selection
-  const handleSelectReason = (reason) => {
-    setActiveStep(3);
-    setMessages((prev) => [
-      ...prev,
-      { id: Date.now(), role: "user", text: reason },
-      {
-        id: Date.now() + 1,
-        role: "assistant",
-        text: `Understood! You selected: **${reason}**.
-
-**Step 3: Visa Options & Fee Breakdown**
-Here is the comparative statutory breakdown for the United Kingdom. I have converted all official Home Office / UKVI fees to their Naira equivalent at our live central bank benchmark (**£1.00 = ₦2,100.00**):`,
-        type: "step3_visa_comparison"
-      }
-    ]);
-  };
-
-  // Execute Step 3: Handle Visa Selection
-  const handleSelectVisaRoute = (route) => {
-    setTripDossier((prev) => ({
-      ...prev,
-      visaType: route.title,
-      consularFeeGbp: route.feeGbp,
-      consularFeeNgn: route.feeNgn,
-      purpose: route.purpose
-    }));
-    setActiveStep(4);
-
-    setMessages((prev) => [
-      ...prev,
-      { id: Date.now(), role: "user", text: `I choose the ${route.title}` },
-      {
-        id: Date.now() + 1,
-        role: "assistant",
-        text: `Excellent selection: **${route.title}**.
-
-• **Official UKVI Consular Fee:** £${route.feeGbp.toLocaleString()} (~₦${route.feeNgn.toLocaleString('en-NG')})
-• **Permitted Stay:** ${route.duration}
-
----
-**Step 4: Proof of Funds (6-Month Bank Statement)**
-Under UK immigration statutory rules, applicants must show an average balance of at least **£1,270 (₦2,667,000.00)** held consistently over a 28-day / 6-month period without sudden unexplained lump deposits.
-
-Let us analyze your 6-month bank statement to verify your average balance:`,
-        type: "step4_bank_statement"
-      }
-    ]);
-  };
-
-  // Execute Step 4: Handle Bank Statement Verification
-  const handleBankStatementVerified = (statementData) => {
-    setTripDossier((prev) => ({
-      ...prev,
-      bankStatement: {
-        status: "verified",
-        averageBalanceNgn: statementData.averageBalance,
-        meetsThreshold: true
-      }
-    }));
-    setActiveStep(5);
-
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: Date.now(),
-        role: "assistant",
-        text: `✅ **Step 4 PROOF OF FUNDS CERTIFIED**
-
-• **Account Name:** ${statementData.accountName}
-• **Bank:** ${statementData.bankName}
-• **6-Month Average Balance:** ₦${statementData.averageBalance.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
-• **Required Maintenance Threshold:** £1,270 (₦${statementData.requiredThresholdNgn.toLocaleString('en-NG')})
-• **Surplus Safety Buffer:** +₦${(statementData.averageBalance - statementData.requiredThresholdNgn).toLocaleString('en-NG')}
-• **Status:** **APPROVED FOR VISA LODGEMENT**
-
----
-**Step 5: Visa Application Fee Payment**
-The official Home Office consular visa application fee + VFS Global biometrics processing charge is **₦380,000.00**.
-
-Please complete payment via our secure Paystack checkout modal to submit your dossier to the consular queue:`,
-        type: "step5_paystack_visa_trigger"
-      }
-    ]);
-  };
-
-  // Trigger Paystack Modal for Visa Fee
-  const triggerVisaFeePaystack = () => {
-    setPaystackAmount(380000);
-    setPaystackPurpose("visa_fee");
-    setPaystackTitle("UK Standard Visitor Visa & VFS Biometrics Fee");
-    setPaystackCallback(() => (receipt) => {
-      setActiveStep(6);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now(),
-          role: "assistant",
-          text: `💳 **PAYMENT CONFIRMED VIA PAYSTACK**
-
-• **Amount Paid:** ₦380,000.00
-• **Paystack Transaction Ref:** \`${receipt.reference}\`
-• **Receipt No:** \`${receipt.receipt_number}\`
-• **Channel:** Mastercard / Card Settlement
-
----
-**Step 6: Book Visa Interview & Biometrics Appointment**
-Your payment has been logged with the Home Office. Now select your preferred VFS Global biometric appointment center and date in Lagos or Abuja:`,
-          type: "step6_appointment"
-        }
-      ]);
-    });
-    setPaystackOpen(true);
-  };
-
-  // Execute Step 6: Handle Appointment Booking
-  const handleAppointmentBooked = (apptData) => {
-    setTripDossier((prev) => ({
-      ...prev,
-      appointment: {
-        status: "confirmed",
-        center: apptData.center,
-        date: apptData.date,
-        time: apptData.time,
-        gwfRef: apptData.gwf_reference
-      }
-    }));
-    setActiveStep(7);
-
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: Date.now(),
-        role: "assistant",
-        text: `📅 **VFS GLOBAL APPOINTMENT BOOKED**
-
-• **GWF Reference:** \`${apptData.gwf_reference}\`
-• **Center:** ${apptData.center}
-• **Date & Time:** ${apptData.date} at ${apptData.time}
-• **Status:** Confirmed ✓
-• **Email Dispatch:** Official appointment confirmation letter & checklist dispatched to **${apptData.email}**
-
----
-**Step 7: Embassy Review & Decision Milestone**
-Simulating consular biometrics capture, document review, and visa issuance...`,
-        type: "step7_visa_approved"
-      }
-    ]);
-  };
-
-  // Execute Step 7 -> 8: Transition from Visa Approval to Flight Logistics
-  const handleProceedToFlights = () => {
-    setActiveStep(8);
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: Date.now(),
-        role: "assistant",
-        text: `🎉 **VISA OFFICIALLY GRANTED & STAMPED!**
-
-Your UK entry clearance is stamped in your passport valid for 6 months.
-
----
-**Step 8: Flight Ticket Preferences**
-Now let us coordinate your departure logistics. What is your flight ticket preference?
-
-• **Route:** Lagos (LOS) ➔ London (LHR)
-• **Departure Window:** Mid-November 2026
-• **Cabin Preference:** Economy, Premium Economy, or Business?
-• **Airline:** British Airways, Virgin Atlantic, or Emirates?
-
-Here are direct flights matching your profile:`,
-        type: "step8_flight_options"
-      }
-    ]);
-  };
-
-  // Trigger Paystack Modal for Flight Ticket
-  const triggerFlightPaystack = (flight) => {
-    setPaystackAmount(flight.price_ngn || 1850000);
-    setPaystackPurpose("flight_ticket");
-    setPaystackTitle(`${flight.airline} ${flight.flight_no} (${flight.origin_code} ➔ ${flight.dest_code}) Ticket`);
-    setPaystackCallback(() => (receipt) => {
-      setTripDossier((prev) => ({
-        ...prev,
-        flight: {
-          status: "confirmed",
-          airline: flight.airline,
-          flightNumber: flight.flight_no,
-          route: `${flight.origin_code} ➔ ${flight.dest_code}`,
-          dates: "15 Nov – 28 Nov 2026",
-          pnr: `BA-${Math.floor(100000 + Math.random() * 900000)}`,
-          price: flight.price_formatted
-        }
-      }));
-      setActiveStep(10);
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now(),
-          role: "assistant",
-          text: `✈️ **FLIGHT TICKET ISSUED & GDS PNR LOCKED**
-
-• **Airline:** ${flight.airline} (${flight.flight_no})
-• **PNR Locator:** \`BA-764920\`
-• **Cabin:** ${flight.cabin}
-• **Baggage:** ${flight.baggage}
-• **Payment:** ₦${flight.price_ngn.toLocaleString('en-NG')} verified via Paystack (\`${receipt.reference}\`)
-
----
-**Step 10: Hotel Accommodation & Consular Proof of Stay**
-Finally, let us secure your verified London hotel accommodation voucher. Here are certified 4-star and 5-star properties offering free consular cancellation:`,
-          type: "step10_hotel_options"
-        }
-      ]);
-    });
-    setPaystackOpen(true);
-  };
-
-  // Trigger Paystack Modal for Hotel Stay Voucher
-  const triggerHotelPaystack = (hotel) => {
-    const totalNights = 7;
-    const totalNgn = (hotel.nightly_ngn || 480000) * totalNights;
-    setPaystackAmount(totalNgn);
-    setPaystackPurpose("hotel_reservation");
-    setPaystackTitle(`${hotel.name} (${totalNights} Nights) Accommodation Voucher`);
-    setPaystackCallback(() => (receipt) => {
-      setTripDossier((prev) => ({
-        ...prev,
-        hotel: {
-          status: "confirmed",
-          name: hotel.name,
-          location: `${hotel.city}, ${hotel.country}`,
-          reference: `VCH-${hotel.city.slice(0, 3).toUpperCase()}-${Math.floor(100000 + Math.random() * 900000)}`,
-          nights: `${totalNights} Nights`
-        }
-      }));
-      setActiveStep(10);
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now(),
-          role: "assistant",
-          text: `🏨 **HOTEL PROOF-OF-STAY VOUCHER ISSUED**
-
-• **Hotel:** ${hotel.name} (${hotel.city})
-• **Room Type:** ${hotel.room_type}
-• **Consular Voucher Code:** \`VCH-LON-892014\`
-• **Payment:** ₦${totalNgn.toLocaleString('en-NG')} verified via Paystack (\`${receipt.reference}\`)
-
-🎉 **CONGRATULATIONS! YOUR COMPLETE RELOCATION & TRAVEL DOSSIER IS 100% READY.**
-
-1. Passport Validity: Verified ✓
-2. Visa Status: Approved & Stamped ✓
-3. Bank Statement Proof of Funds: Passed (₦8.55M average) ✓
-4. VFS Appointment: Booked & Confirmation Dispatched ✓
-5. Flight Ticket: Confirmed PNR BA-764920 ✓
-6. Hotel Accommodation: Consular Certified Voucher Issued ✓
-
-You are cleared for departure to London!`,
-          type: "text"
-        }
-      ]);
-    });
-    setPaystackOpen(true);
-  };
-
-  // Direct Jump to Any Demo Step via DemoFlowBar
-  const handleJumpToStep = (stepNumber) => {
-    setActiveStep(stepNumber);
-    if (stepNumber === 1) {
-      executePassportVerification();
-    } else if (stepNumber === 2) {
-      handleSelectReason("Tourism, Holiday & Family Visit");
-    } else if (stepNumber === 3) {
-      handleSelectVisaRoute({
-        id: "visitor",
-        title: "UK Standard Visitor Visa",
-        feeGbp: 115,
-        feeNgn: 241500,
-        duration: "6 Months",
-        purpose: "Tourism and Family Visit"
-      });
-    } else if (stepNumber === 4) {
-      handleBankStatementVerified({
-        accountName: "Tunde Babatunde Adeyemi",
-        bankName: "Guaranty Trust Bank (GTBank)",
-        averageBalance: 8550000,
-        requiredThresholdNgn: 2667000
-      });
-    } else if (stepNumber === 5) {
-      triggerVisaFeePaystack();
-    } else if (stepNumber === 6) {
-      handleAppointmentBooked({
-        center: "VFS Global Lagos (Victoria Island - Manor Hall)",
-        date: "2026-10-28",
-        time: "09:30 AM",
-        applicant_name: "Tunde Babatunde Adeyemi",
-        email: user?.email || "applicant@travelforge.com",
-        gwf_reference: "GWF099482103"
-      });
-    } else if (stepNumber === 7) {
-      handleProceedToFlights();
-    } else if (stepNumber === 8 || stepNumber === 9) {
-      triggerFlightPaystack({
-        airline: "British Airways",
-        flight_no: "BA76",
-        origin_code: "LOS",
-        dest_code: "LHR",
-        cabin: "World Traveller Plus (Premium)",
-        baggage: "2 x 23kg checked",
-        price_ngn: 1850000,
-        price_formatted: "₦1,850,000"
-      });
-    } else if (stepNumber === 10) {
-      triggerHotelPaystack({
-        name: "The Savoy London",
-        city: "London",
-        country: "United Kingdom",
-        room_type: "Deluxe Thames River View Suite",
-        nightly_ngn: 480000
-      });
+      return;
     }
+
+    // Validate size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setFileError(`File "${file.name}" exceeds 10MB limit.`);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          role: "assistant",
+          text: `⚠️ **File Size Exceeded**
+
+**"${file.name}"** is ${(file.size / (1024 * 1024)).toFixed(1)}MB. Consular upload limits allow up to 10MB per document.`,
+          type: "text",
+        }
+      ]);
+      return;
+    }
+
+    setIsUploadingDoc(true);
+
+    // Add user upload message in stream
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: Date.now(),
+        role: "user",
+        text: `Uploaded document: ${file.name} (${(file.size / 1024).toFixed(0)} KB)`,
+        type: "file_upload",
+        fileName: file.name,
+        fileSize: (file.size / 1024).toFixed(0) + " KB"
+      }
+    ]);
+
+    setTimeout(() => {
+      setIsUploadingDoc(false);
+      const lowerName = file.name.toLowerCase();
+
+      // Detect if bank statement
+      if (lowerName.includes("statement") || lowerName.includes("bank") || lowerName.includes("account") || lowerName.includes("funds")) {
+        triggerBankStatementVerification();
+      } else {
+        // Default to passport / bio-page
+        triggerPassportVerification(file.name);
+      }
+    }, 1000);
   };
 
-  // Handle Freeform Message Send
+  // Passport Verification Handler
+  const triggerPassportVerification = (fileName = "International_Passport_A12345678.pdf") => {
+    setTripDossier((prev) => ({
+      ...prev,
+      passport: {
+        ...prev.passport,
+        status: "verified",
+        monthsValid: 60,
+      }
+    }));
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: Date.now() + 1,
+        role: "assistant",
+        text: `✅ **Passport Compliance Verified**
+
+• Document: **${fileName}**
+• Holder: **Tunde Babatunde Adeyemi**
+• Passport No: **A12345678** (Nigerian Standard)
+• Expiry: **14 Nov 2031**
+• Validity Check: **60 Months Remaining** (Exceeds the 6-month statutory rule ✓)
+• ICAO Compliance: **MRZ Checksum Valid ✓**
+
+Your passport is in order! What is your primary purpose of travel?`,
+        type: "visa_options",
+        options: [
+          "Vacation & Tourism (Standard Visitor)",
+          "Skilled Work / Relocation ('Japa')",
+          "Higher Education (Tier 4 / Student)",
+          "Business & Corporate Engagement"
+        ]
+      }
+    ]);
+  };
+
+  // Bank Statement Analysis Handler
+  const triggerBankStatementVerification = () => {
+    setTripDossier((prev) => ({
+      ...prev,
+      funds: {
+        ...prev.funds,
+        status: "verified"
+      }
+    }));
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: Date.now() + 1,
+        role: "assistant",
+        text: `📊 **6-Month Bank Statement Audit Complete**
+
+I have parsed your 6-month transaction ledger. Your average balance of **₦8,850,000** exceeds the UKVI maintenance requirement of **£1,270 (₦2,667,000)** with a **+232% surplus**!`,
+        type: "bank_statement_card"
+      },
+      {
+        id: Date.now() + 2,
+        role: "assistant",
+        text: `Your financial profile meets all statutory guidelines. The next step is paying your official visa fee (£115 / ₦380,000 equivalent with biometrics and processing). You can pay seamlessly via Paystack below.`,
+        type: "pay_visa_fee_prompt"
+      }
+    ]);
+  };
+
+  // Trigger Real Paystack Checkout for Visa Fee
+  const handlePayVisaFee = () => {
+    openPaystackPopup({
+      email: user?.email || "tunde.adeyemi@example.com",
+      amountNgn: 380000,
+      paymentType: "visa_fee",
+      title: "UKVI Visa Application Fee & Consular Biometrics",
+      metadata: {
+        applicant: "Tunde Babatunde Adeyemi",
+        visa_type: tripDossier.visaType
+      },
+      onSuccess: (res) => {
+        setTripDossier((prev) => ({
+          ...prev,
+          feePaid: true,
+          paymentRef: res.reference
+        }));
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now(),
+            role: "assistant",
+            text: `💳 **Payment Received via Paystack!**
+
+• Transaction Reference: **${res.reference}**
+• Amount: **₦380,000.00**
+• Status: **Settled & Verified ✓**
+
+Your visa application fee has been transmitted to UKVI. Let us now book your biometrics and interview appointment at VFS Global:`,
+            type: "appointment_booking"
+          }
+        ]);
+      },
+      onCancel: () => {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now(),
+            role: "assistant",
+            text: `Payment window was dismissed. You can click "Pay Visa Fee via Paystack" whenever you are ready to proceed.`,
+            type: "pay_visa_fee_prompt"
+          }
+        ]);
+      }
+    });
+  };
+
+  // Trigger Real Paystack Checkout for Flight Ticket Hold / Issuance
+  const handlePayFlight = (flight) => {
+    openPaystackPopup({
+      email: user?.email || "tunde.adeyemi@example.com",
+      amountNgn: flight.price_ngn || 1850000,
+      paymentType: "flight_ticket",
+      title: `Flight Ticket - ${flight.airline || "British Airways"} (${flight.flight_no || "BA-074"})`,
+      metadata: {
+        airline: flight.airline,
+        route: flight.route || "LOS → LHR",
+        flight_no: flight.flight_no || "BA-074"
+      },
+      onSuccess: (res) => {
+        setTripDossier((prev) => ({
+          ...prev,
+          flight: {
+            status: "paid",
+            airline: flight.airline || "British Airways",
+            flightNo: flight.flight_no || "BA-074",
+            pnr: "BA-764920",
+            route: "Lagos (LOS) → London Heathrow (LHR)",
+            amountNgn: flight.price_ngn || 1850000
+          }
+        }));
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now(),
+            role: "assistant",
+            text: `✈️ **Flight Payment Confirmed via Paystack!**
+
+• Airline: **${flight.airline || "British Airways"}** (${flight.flight_no || "BA-074"})
+• Confirmed PNR: **BA-764920**
+• Baggage Allowance: **2 × 23kg Checked Bags + 1 Cabin**
+• Payment Reference: **${res.reference}**
+
+Now, let us secure your consular accommodation and proof-of-stay voucher:`,
+            type: "hotel_selection"
+          }
+        ]);
+      }
+    });
+  };
+
+  // Trigger Real Paystack Checkout for Hotel Voucher
+  const handlePayHotel = (hotel) => {
+    openPaystackPopup({
+      email: user?.email || "tunde.adeyemi@example.com",
+      amountNgn: 640000,
+      paymentType: "hotel_voucher",
+      title: `Consular Proof-of-Stay Voucher - ${hotel.name || "Park Plaza Westminster"}`,
+      metadata: {
+        hotel_name: hotel.name,
+        location: hotel.location
+      },
+      onSuccess: (res) => {
+        setTripDossier((prev) => ({
+          ...prev,
+          hotel: {
+            status: "paid",
+            name: hotel.name || "Park Plaza Westminster Bridge",
+            location: "London SE1 7UT, United Kingdom",
+            voucherRef: "VCH-LON-892014",
+            nights: "14 Nights",
+            amountNgn: 640000
+          }
+        }));
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now(),
+            role: "assistant",
+            text: `🏨 **Hotel Booking & Proof-of-Stay Voucher Issued!**
+
+• Hotel: **${hotel.name || "Park Plaza Westminster"}**
+• Consular Voucher Ref: **VCH-LON-892014**
+• Status: **Confirmed with Official Consular QR Seal ✓**
+• Payment Reference: **${res.reference}**
+
+🎉 **Congratulations Tunde!** Your entire travel package is now fully locked:
+1. ✅ Passport Certified
+2. ✅ Bank Statement Verified (₦8.85M average)
+3. ✅ Visa Approved & Stamped
+4. ✅ VFS Appointment Confirmed
+5. ✅ Flight Tickets Issued (PNR: BA-764920)
+6. ✅ Hotel Voucher Locked (VCH-LON-892014)
+
+You are 100% travel ready!`,
+            type: "final_success"
+          }
+        ]);
+      }
+    });
+  };
+
+  // Handle Conversational Message Submission
   const handleSend = async (textToSend) => {
     const text = textToSend || input;
     if (!text.trim()) return;
@@ -524,494 +445,714 @@ You are cleared for departure to London!`,
 
     const lower = text.toLowerCase();
 
-    setTimeout(() => {
-      setIsTyping(false);
+    // 1. Check for Passport Intent
+    if (lower.includes("passport") || lower.includes("validity") || lower.includes("6 month") || lower.includes("a12345678")) {
+      setTimeout(() => {
+        setIsTyping(false);
+        triggerPassportVerification();
+      }, 700);
+      return;
+    }
 
-      if (lower.includes("passport") || lower.includes("mrz") || lower.includes("validity")) {
-        executePassportVerification();
-      } else if (lower.includes("holiday") || lower.includes("visit") || lower.includes("touris") || lower.includes("reason")) {
-        handleSelectReason("Tourism, Holiday & Family Visit");
-      } else if (lower.includes("work") || lower.includes("job") || lower.includes("japa")) {
-        handleSelectReason("Skilled Work & Tech Job Relocation (Japa)");
-      } else if (lower.includes("statement") || lower.includes("bank") || lower.includes("funds") || lower.includes("balance")) {
-        handleBankStatementVerified({
-          accountName: "Tunde Babatunde Adeyemi",
-          bankName: "Guaranty Trust Bank (GTBank)",
-          averageBalance: 8550000,
-          requiredThresholdNgn: 2667000
-        });
-      } else if (lower.includes("pay") || lower.includes("paystack") || lower.includes("fee")) {
-        triggerVisaFeePaystack();
-      } else if (lower.includes("appointment") || lower.includes("vfs") || lower.includes("interview") || lower.includes("biometric")) {
-        handleAppointmentBooked({
-          center: "VFS Global Lagos (Victoria Island - Manor Hall)",
-          date: "2026-10-28",
-          time: "09:30 AM",
-          applicant_name: "Tunde Babatunde Adeyemi",
-          email: user?.email || "applicant@travelforge.com",
-          gwf_reference: "GWF099482103"
-        });
-      } else if (lower.includes("flight") || lower.includes("ticket") || lower.includes("airway") || lower.includes("emirates")) {
-        handleProceedToFlights();
-      } else if (lower.includes("hotel") || lower.includes("savoy") || lower.includes("room") || lower.includes("stay")) {
-        triggerHotelPaystack({
-          name: "The Savoy London",
-          city: "London",
-          country: "United Kingdom",
-          room_type: "Deluxe Thames River View Suite",
-          nightly_ngn: 480000
-        });
-      } else {
+    // 2. Check for Travel Reason / Visa Selection Intent
+    if (lower.includes("vacation") || lower.includes("tourism") || lower.includes("holiday") || lower.includes("japa") || lower.includes("relocate") || lower.includes("work") || lower.includes("study") || lower.includes("student") || lower.includes("visa difference") || lower.includes("compare visa")) {
+      setTimeout(() => {
+        setIsTyping(false);
         setMessages((prev) => [
           ...prev,
           {
             id: Date.now() + 1,
             role: "assistant",
-            text: `I am actively coordinating your travel dossier! You can select any step from the 10-step Demo Flow Bar above, or ask me any question about visa rules, bank balance calculations, or flight booking.`,
+            text: `Based on your intent, here are the matching UK visa routes with live statutory fees in both GBP (£) and Nigerian Naira (₦) converted at the current exchange rate (£1 = ₦2,100):`,
+            type: "visa_comparison_card"
+          }
+        ]);
+      }, 700);
+      return;
+    }
+
+    // 3. Check for Bank Statement / Proof of Funds Intent
+    if (lower.includes("bank") || lower.includes("statement") || lower.includes("fund") || lower.includes("balance") || lower.includes("maintenance") || lower.includes("money")) {
+      setTimeout(() => {
+        setIsTyping(false);
+        triggerBankStatementVerification();
+      }, 700);
+      return;
+    }
+
+    // 4. Check for Pay Visa Fee Intent
+    if (lower.includes("pay fee") || lower.includes("pay visa") || lower.includes("paystack") || lower.includes("payment")) {
+      setIsTyping(false);
+      handlePayVisaFee();
+      return;
+    }
+
+    // 5. Check for Appointment / VFS Intent
+    if (lower.includes("appointment") || lower.includes("vfs") || lower.includes("biometrics") || lower.includes("interview")) {
+      setTimeout(() => {
+        setIsTyping(false);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now() + 1,
+            role: "assistant",
+            text: `Select your preferred VFS Global biometrics center and appointment time below:`,
+            type: "appointment_booking"
+          }
+        ]);
+      }, 700);
+      return;
+    }
+
+    // 6. Check for Visa Approval Intent
+    if (lower.includes("approved") || lower.includes("granted") || lower.includes("approval") || lower.includes("visa ready")) {
+      setTimeout(() => {
+        setIsTyping(false);
+        setTripDossier((prev) => ({
+          ...prev,
+          visaDecision: {
+            status: "approved",
+            vignetteNumber: "UKVI-948201-B",
+            validFrom: "14 Nov 2026",
+            validTo: "14 May 2027"
+          }
+        }));
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now() + 1,
+            role: "assistant",
+            text: `🎉 Great news! Your UK Standard Visitor Visa has been approved by the Home Office!`,
+            type: "visa_approved"
+          }
+        ]);
+      }, 700);
+      return;
+    }
+
+    // 7. Check for Flight Preferences / Search Intent
+    if (lower.includes("flight") || lower.includes("ticket") || lower.includes("luggage") || lower.includes("direct flight") || lower.includes("fly")) {
+      setTimeout(() => {
+        setIsTyping(false);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now() + 1,
+            role: "assistant",
+            text: `Here are direct, non-stop flights from Lagos (LOS) to London Heathrow (LHR) with 2 × 23kg luggage included. You can secure a seat hold or pay directly via Paystack:`,
+            type: "flight_selection"
+          }
+        ]);
+      }, 700);
+      return;
+    }
+
+    // 8. Check for Hotel / Accommodation Intent
+    if (lower.includes("hotel") || lower.includes("stay") || lower.includes("accommodation") || lower.includes("voucher")) {
+      setTimeout(() => {
+        setIsTyping(false);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now() + 1,
+            role: "assistant",
+            text: `Here are certified London accommodations that fulfill UKVI proof-of-stay requirements:`,
+            type: "hotel_selection"
+          }
+        ]);
+      }, 700);
+      return;
+    }
+
+    // 9. Query Backend Chat RAG Service
+    try {
+      const backendRes = await apiService.chat.sendMessage(text, sessionId || undefined, applicationId || undefined);
+      if (backendRes && backendRes.reply) {
+        setIsTyping(false);
+        if (backendRes.session_id) {
+          setSessionId(backendRes.session_id);
+          localStorage.setItem(storageKey, backendRes.session_id);
+        }
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now() + 1,
+            role: "assistant",
+            text: backendRes.reply,
+            sources: backendRes.sources || [],
+            stage: backendRes.stage || "intake",
             type: "text"
           }
         ]);
+        return;
       }
-    }, 600);
+    } catch (e) {
+      console.warn("Backend chat query fallback:", e.message);
+    }
+
+    // Default Fallback
+    setTimeout(() => {
+      setIsTyping(false);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now() + 1,
+          role: "assistant",
+          text: `I understand! Let's proceed with your UK consular intake. We can verify your passport validity, review your 6-month bank statement, schedule your VFS biometrics, or review direct flight options. What would you like to focus on next?`,
+          type: "text",
+          options: [
+            "Verify Passport Validity",
+            "Review Visa Options & Costs",
+            "Upload 6-Month Bank Statement",
+            "Book VFS Biometrics Appointment"
+          ]
+        }
+      ]);
+    }, 800);
   };
 
+  // Readiness Calculation
+  const calculateReadiness = () => {
+    let score = 0;
+    if (tripDossier.passport.status === "verified") score += 20;
+    if (tripDossier.funds.status === "verified") score += 20;
+    if (tripDossier.feePaid) score += 20;
+    if (tripDossier.appointment.status === "confirmed") score += 15;
+    if (tripDossier.flight.status === "paid" || tripDossier.flight.status === "held") score += 15;
+    if (tripDossier.hotel.status === "paid") score += 10;
+    return score;
+  };
+
+  const readinessScore = calculateReadiness();
+
   return (
-    <div className="space-y-4">
-      {/* 10-Step Interactive Demo Ribbon */}
-      <DemoFlowBar activeStep={activeStep} onSelectStep={handleJumpToStep} />
+    <div className="flex h-[calc(100vh-64px)] overflow-hidden bg-slate-50">
+      {/* Hidden File Picker */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileUpload}
+        accept=".pdf,.png,.jpg,.jpeg,.webp"
+        className="hidden"
+      />
 
-      {/* Main Grid: Left = Chat Workspace, Right = Live Trip Summary */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        
-        {/* Left Column: Conversational AI Agent Stream */}
-        <div className="lg:col-span-7 flex flex-col h-[760px] bg-white rounded-[32px] border border-slate-200 shadow-sleek overflow-hidden">
-          
-          {/* Chat Stream Header */}
-          <div className="px-6 py-3.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <div className="w-9 h-9 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-bold shadow-sm">
-                  <Bot className="w-4 h-4 text-brand-300" />
-                </div>
-                <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white" />
-              </div>
-
-              <div>
-                <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                  TravelForge Concierge
-                  <span className="text-[10px] text-brand-700 bg-brand-50 border border-brand-200 font-semibold px-2 py-0.2 rounded-full">
-                    Step {activeStep} of 10 Active
-                  </span>
-                </div>
-                <div className="text-[11px] text-slate-400">
-                  Full Autonomy Intake • Real-Time Paystack & VFS Dispatch
-                </div>
-              </div>
+      {/* Main Conversational Workspace */}
+      <div className="flex-1 flex flex-col h-full bg-white border-r border-slate-200">
+        {/* Workspace Header */}
+        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-white z-10 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-brand-50 border border-brand-100 flex items-center justify-center text-brand-600">
+              <Bot className="w-5 h-5" />
             </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-sm font-bold text-slate-900">AI Consular Intake Concierge</h1>
+                <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  Autonomous Agent Active
+                </span>
+              </div>
+              <p className="text-xs text-slate-500">Autonomous passport checks, 6-month bank audits, and Paystack settlement</p>
+            </div>
+          </div>
 
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => {
-                setActiveStep(1);
-                setMessages([
-                  {
-                    id: 1,
-                    role: "assistant",
-                    text: `Hello Tunde. Welcome to your TravelForge consular intake workspace.
-
-I will guide you step-by-step through obtaining your visa, verifying your 6-month bank statement, booking your VFS biometrics, and locking your flights and hotels with zero manual forms.
-
-Let us begin with Step 1: Let us inspect your international passport to confirm validity of 6+ months.`,
-                    type: "step1_passport"
-                  }
-                ]);
-              }}
-              title="Reset Demo Flow"
-              className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-xs font-semibold shadow-sm transition-all cursor-pointer"
+              onClick={() => fileInputRef.current?.click()}
+              className="px-3 py-1.5 rounded-xl border border-slate-200 hover:border-brand-500 text-xs font-semibold text-slate-700 hover:text-brand-600 flex items-center gap-1.5 transition-all shadow-subtle cursor-pointer"
             >
-              <RefreshCw className="w-3.5 h-3.5 text-slate-400" />
-              <span>Reset Flow</span>
+              <UploadCloud className="w-3.5 h-3.5 text-brand-500" />
+              <span>Upload Document</span>
             </button>
-          </div>
-
-          {/* Messages Stream */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-5">
-            {messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`flex gap-3.5 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-              >
-                {msg.role === "assistant" && (
-                  <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm">
-                    <Bot className="w-4 h-4 text-brand-300" />
-                  </div>
-                )}
-
-                <div className={`space-y-3 max-w-[88%] ${msg.role === "user" ? "items-end" : "items-start"}`}>
-                  {/* Bubble Text */}
-                  <div
-                    className={`p-4 rounded-3xl text-xs sm:text-[13px] leading-relaxed shadow-subtle ${
-                      msg.role === "user"
-                        ? "bg-slate-900 text-white rounded-tr-none font-medium"
-                        : "bg-slate-50/90 text-slate-800 rounded-tl-none border border-slate-200/70"
-                    }`}
-                  >
-                    <div className="whitespace-pre-wrap">{msg.text}</div>
-
-                    {/* Quick Suggestion Pills */}
-                    {msg.options && (
-                      <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-slate-200/60">
-                        {msg.options.map((opt, i) => (
-                          <button
-                            key={i}
-                            onClick={() => {
-                              if (msg.type === "step2_reason") {
-                                handleSelectReason(opt);
-                              } else {
-                                handleSend(opt);
-                              }
-                            }}
-                            className="px-3 py-1.5 rounded-full bg-white hover:bg-brand-50 border border-slate-200/80 hover:border-brand-300 text-slate-700 hover:text-brand-800 text-[11px] font-semibold shadow-sleek transition-all cursor-pointer"
-                          >
-                            {opt}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Interactive Cards embedded directly in the message flow */}
-                  
-                  {/* Step 1: Passport Verification Card */}
-                  {msg.type === "step1_passport" && tripDossier.passport.status !== "verified" && (
-                    <div className="p-5 rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white shadow-float space-y-4">
-                      <div className="flex items-center justify-between border-b border-slate-700/60 pb-3">
-                        <div className="flex items-center gap-2">
-                          <Fingerprint className="w-5 h-5 text-emerald-400" />
-                          <div>
-                            <span className="text-[10px] font-mono tracking-widest text-slate-400 block uppercase">
-                              ICAO 9303 BIOMETRIC VERIFICATION
-                            </span>
-                            <span className="font-bold text-xs text-white">
-                              Passport Validity Check
-                            </span>
-                          </div>
-                        </div>
-                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
-                          6-Month Rule
-                        </span>
-                      </div>
-
-                      <p className="text-xs text-slate-300 leading-relaxed">
-                        The assistant automatically checks your expiration date against the mandatory 6-month consular validity rule.
-                      </p>
-
-                      {scanningPassport ? (
-                        <div className="p-4 rounded-2xl bg-slate-800 border border-slate-700 text-center space-y-2">
-                          <div className="flex items-center justify-center gap-2 text-brand-300 text-xs font-bold font-mono">
-                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                            <span>SCANNING PASSPORT MRZ & VALIDITY...</span>
-                          </div>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={executePassportVerification}
-                          className="w-full p-3.5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/10 text-left transition-all cursor-pointer flex items-center justify-between"
-                        >
-                          <div>
-                            <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                              <span>Verify Passport on File (A12345678)</span>
-                            </div>
-                            <div className="text-[11px] text-slate-300 font-mono mt-0.5">
-                              Tunde Adebayo • Expires 14 Nov 2031 (Valid &gt; 5 yrs)
-                            </div>
-                          </div>
-                          <ArrowRight className="w-4 h-4 text-slate-400" />
-                        </button>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Step 3: Visa Comparison Card */}
-                  {msg.type === "step3_visa_comparison" && (
-                    <VisaComparisonCard onSelectRoute={handleSelectVisaRoute} />
-                  )}
-
-                  {/* Step 4: Bank Statement Card */}
-                  {msg.type === "step4_bank_statement" && (
-                    <BankStatementCard onVerified={handleBankStatementVerified} />
-                  )}
-
-                  {/* Step 5: Paystack Trigger Card */}
-                  {msg.type === "step5_paystack_visa_trigger" && (
-                    <div className="p-5 rounded-3xl bg-[#0BA4DB]/10 border border-[#0BA4DB]/30 text-xs space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 font-bold text-slate-900">
-                          <CreditCard className="w-4 h-4 text-[#0BA4DB]" />
-                          <span>Paystack Visa Fee Checkout</span>
-                        </div>
-                        <span className="font-mono font-black text-[#0BA4DB] text-sm">₦380,000.00</span>
-                      </div>
-                      <p className="text-slate-600">
-                        Click below to trigger the Paystack pop-up checkout modal and settle the official Home Office consular fee.
-                      </p>
-                      <button
-                        onClick={triggerVisaFeePaystack}
-                        className="w-full py-3 rounded-2xl bg-[#0BA4DB] hover:bg-[#0993C5] text-white font-extrabold text-xs shadow-md shadow-sky-500/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
-                      >
-                        <Lock className="w-3.5 h-3.5" />
-                        <span>Open Paystack Modal (Pay ₦380,000.00)</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Step 6: Appointment Card */}
-                  {msg.type === "step6_appointment" && (
-                    <AppointmentCard onBooked={handleAppointmentBooked} userEmail={user?.email || "applicant@travelforge.com"} />
-                  )}
-
-                  {/* Step 7: Visa Approved Milestone Card */}
-                  {msg.type === "step7_visa_approved" && (
-                    <VisaApprovalCard onProceedToFlights={handleProceedToFlights} />
-                  )}
-
-                  {/* Step 8 & 9: Flight Cards */}
-                  {msg.type === "step8_flight_options" && (
-                    <div className="space-y-3">
-                      <FlightCards destination="London" onSelectFlight={triggerFlightPaystack} />
-                    </div>
-                  )}
-
-                  {/* Step 10: Hotel Cards */}
-                  {msg.type === "step10_hotel_options" && (
-                    <div className="space-y-3">
-                      <HotelCards city="London" onSelectHotel={triggerHotelPaystack} />
-                    </div>
-                  )}
-                </div>
-
-                {msg.role === "user" && (
-                  <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center flex-shrink-0 mt-0.5 font-bold text-xs">
-                    {user?.name ? user.name.slice(0, 2).toUpperCase() : "TA"}
-                  </div>
-                )}
-              </div>
-            ))}
-
-            {isTyping && (
-              <div className="flex gap-3 items-center text-slate-400 text-xs">
-                <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center shadow-sm">
-                  <Bot className="w-4 h-4 text-brand-300" />
-                </div>
-                <div className="p-3.5 rounded-2xl bg-slate-100 flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" />
-                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce [animation-delay:0.2s]" />
-                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce [animation-delay:0.4s]" />
-                </div>
-              </div>
-            )}
-
-            <div ref={chatEndRef} />
-          </div>
-
-          {/* Chat Input Bar */}
-          <div className="p-4 bg-white border-t border-slate-100 flex items-center gap-2.5">
-            <input 
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSend()}
-              placeholder="Ask anything or respond to the assistant..."
-              className="flex-1 px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-900 focus:outline-none focus:border-slate-400"
-            />
             <button
-              onClick={() => handleSend()}
-              className="p-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white shadow-sleek transition-all cursor-pointer"
+              onClick={() => setPreviewDossierModal(true)}
+              className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-xs font-semibold text-white flex items-center gap-1.5 transition-all shadow-subtle cursor-pointer"
             >
-              <Send className="w-4 h-4" />
+              <Eye className="w-3.5 h-3.5" />
+              <span>View Dossier ({readinessScore}%)</span>
             </button>
           </div>
         </div>
 
-        {/* Right Column: Live Trip Dossier Summary Panel */}
-        <div className="lg:col-span-5 space-y-4">
-          <div className="p-6 bg-white rounded-[32px] border border-slate-200 shadow-sleek space-y-5">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div>
-                <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 block font-bold">
-                  AUTONOMOUS TRAVEL DOSSIER
-                </span>
-                <h3 className="font-extrabold text-slate-900 text-base">
-                  {tripDossier.destination} {tripDossier.flag}
-                </h3>
+        {/* File Format Error Banner if any */}
+        {fileError && (
+          <div className="bg-rose-50 border-b border-rose-200 px-6 py-2.5 flex items-center justify-between text-xs text-rose-800">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              <span>{fileError}</span>
+            </div>
+            <button onClick={() => setFileError(null)} className="text-rose-500 hover:text-rose-700">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Conversation Stream */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {messages.map((msg) => (
+            <div key={msg.id} className={`flex gap-3.5 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+              {msg.role === "assistant" && (
+                <div className="w-8 h-8 rounded-full bg-brand-600 text-white flex items-center justify-center shrink-0 text-xs font-bold shadow-subtle">
+                  TF
+                </div>
+              )}
+
+              <div className={`max-w-2xl ${msg.role === "user" ? "items-end" : "items-start"} space-y-3`}>
+                {/* Bubble Text */}
+                {msg.text && (
+                  <div
+                    className={`p-4 rounded-2xl text-sm leading-relaxed shadow-subtle ${
+                      msg.role === "user"
+                        ? "bg-brand-600 text-white rounded-tr-xs"
+                        : "bg-slate-50 border border-slate-200/80 text-slate-800 rounded-tl-xs whitespace-pre-line"
+                    }`}
+                  >
+                    {msg.text}
+                  </div>
+                )}
+
+                {/* File Upload Attachment Preview */}
+                {msg.type === "file_upload" && (
+                  <div className="flex items-center gap-2.5 p-3 rounded-xl bg-brand-50 border border-brand-200 text-xs text-brand-900">
+                    <FileText className="w-4 h-4 text-brand-600" />
+                    <div>
+                      <div className="font-bold">{msg.fileName}</div>
+                      <div className="text-[10px] text-brand-600">{msg.fileSize} • Validated Format</div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Interactive Option Pills */}
+                {msg.options && (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {msg.options.map((opt, i) => (
+                      <button
+                        key={i}
+                        onClick={() => handleSend(opt)}
+                        className="text-xs px-3.5 py-1.5 rounded-full bg-white border border-slate-200 text-slate-700 hover:border-brand-500 hover:text-brand-600 hover:bg-brand-50/50 font-medium transition-all shadow-subtle cursor-pointer"
+                      >
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Rich Component: Visa Comparison Card */}
+                {msg.type === "visa_comparison_card" && (
+                  <VisaComparisonCard
+                    onSelectVisa={(visa) => {
+                      setTripDossier((prev) => ({
+                        ...prev,
+                        visaType: visa.name,
+                        visaCategory: visa.id,
+                        consularFee: `£${visa.fee_gbp} (₦${(visa.fee_gbp * 2100).toLocaleString()})`
+                      }));
+                      handleSend(`I would like to apply for the ${visa.name}. Please analyze my bank statement for compliance.`);
+                    }}
+                  />
+                )}
+
+                {/* Rich Component: Bank Statement Card */}
+                {msg.type === "bank_statement_card" && (
+                  <BankStatementCard
+                    onProceedToPayment={() => {
+                      handlePayVisaFee();
+                    }}
+                  />
+                )}
+
+                {/* Prompt: Pay Visa Fee Button */}
+                {msg.type === "pay_visa_fee_prompt" && (
+                  <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200 flex items-center justify-between gap-4">
+                    <div>
+                      <div className="text-xs font-bold text-emerald-900">UKVI Visa Application Fee</div>
+                      <div className="text-xs text-emerald-700">Official visa fee + biometrics processing: ₦380,000</div>
+                    </div>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={handlePayVisaFee}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
+                    >
+                      Pay ₦380,000 via Paystack →
+                    </Button>
+                  </div>
+                )}
+
+                {/* Rich Component: Appointment Booking Card */}
+                {msg.type === "appointment_booking" && (
+                  <AppointmentCard
+                    onAppointmentBooked={(booking) => {
+                      setTripDossier((prev) => ({
+                        ...prev,
+                        appointment: {
+                          status: "confirmed",
+                          center: booking.center,
+                          date: booking.date,
+                          time: booking.time,
+                          gwfRef: booking.gwf_number
+                        }
+                      }));
+
+                      setMessages((prev) => [
+                        ...prev,
+                        {
+                          id: Date.now(),
+                          role: "assistant",
+                          text: `📅 **VFS Global Appointment Locked & Dispatched!**
+
+• Center: **${booking.center}**
+• Date & Time: **${booking.date} at ${booking.time}**
+• GWF Reference: **${booking.gwf_number}**
+• Confirmation Email: **Dispatched to ${user?.email || "tunde.adeyemi@example.com"}** ✓
+
+Fast-forwarding to consular review: Your application has been reviewed and adjudicated...`,
+                          type: "visa_approved"
+                        }
+                      ]);
+                    }}
+                  />
+                )}
+
+                {/* Rich Component: Visa Approval Card */}
+                {msg.type === "visa_approved" && (
+                  <VisaApprovalCard
+                    onProceedToTravel={() => {
+                      handleSend("I would like to view direct flights from Lagos to London with 2x23kg checked bags.");
+                    }}
+                  />
+                )}
+
+                {/* Rich Component: Flight Selection Cards */}
+                {msg.type === "flight_selection" && (
+                  <FlightCards
+                    flights={[
+                      {
+                        id: "fl-ba-074",
+                        airline: "British Airways",
+                        flight_no: "BA-074",
+                        origin_code: "LOS",
+                        destination_code: "LHR",
+                        route: "Lagos (LOS) → London Heathrow (LHR)",
+                        departure: "2026-11-14T22:50:00",
+                        departure_date: "14 Nov 2026",
+                        baggage: "2 × 23kg Checked Bags + 1 Cabin",
+                        price_ngn: 1850000,
+                        price_formatted: "₦1,850,000",
+                        cabin: "Economy Direct"
+                      },
+                      {
+                        id: "fl-vs-412",
+                        airline: "Virgin Atlantic",
+                        flight_no: "VS-412",
+                        origin_code: "LOS",
+                        destination_code: "LHR",
+                        route: "Lagos (LOS) → London Heathrow (LHR)",
+                        departure: "2026-11-15T09:40:00",
+                        departure_date: "15 Nov 2026",
+                        baggage: "2 × 23kg Checked Bags + 1 Cabin",
+                        price_ngn: 1920000,
+                        price_formatted: "₦1,920,000",
+                        cabin: "Economy Classic Direct"
+                      }
+                    ]}
+                    onHoldFlight={(flight) => {
+                      handlePayFlight(flight);
+                    }}
+                  />
+                )}
+
+                {/* Rich Component: Hotel Selection Cards */}
+                {msg.type === "hotel_selection" && (
+                  <HotelCards
+                    hotels={[
+                      {
+                        id: "ht-westminster-bridge",
+                        name: "Park Plaza Westminster Bridge",
+                        location: "London SE1 7UT, United Kingdom",
+                        price_formatted: "₦640,000 / 14 nights",
+                        rating: 4.8,
+                        amenities: ["Free High-Speed Wi-Fi", "Consular Proof-of-Stay Voucher", "Metro Access", "Full English Breakfast"],
+                        image_url: "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=600&q=80"
+                      },
+                      {
+                        id: "ht-citizenm-tower",
+                        name: "citizenM Tower of London",
+                        location: "Trinity Square, London EC3N 4DJ",
+                        price_formatted: "₦580,000 / 14 nights",
+                        rating: 4.9,
+                        amenities: ["Consular Booking Voucher", "Luggage Storage", "24/7 Concierge", "Free Wi-Fi"],
+                        image_url: "https://images.unsplash.com/photo-1582719508461-905c673771fd?auto=format&fit=crop&w=600&q=80"
+                      }
+                    ]}
+                    onSelectHotel={(hotel) => {
+                      handlePayHotel(hotel);
+                    }}
+                  />
+                )}
               </div>
-              <span className="text-xs font-mono font-bold px-3 py-1 rounded-full bg-brand-50 text-brand-800 border border-brand-200">
-                Step {activeStep}/10
+            </div>
+          ))}
+
+          {/* Typing Indicator */}
+          {isTyping && (
+            <div className="flex gap-3 items-center text-xs text-slate-500 italic">
+              <div className="w-8 h-8 rounded-full bg-brand-50 border border-brand-100 text-brand-600 flex items-center justify-center">
+                <Bot className="w-4 h-4 animate-spin" />
+              </div>
+              <div className="flex items-center gap-1.5 p-3 rounded-2xl bg-slate-50 border border-slate-200/60">
+                <span className="w-2 h-2 rounded-full bg-brand-500 animate-bounce"></span>
+                <span className="w-2 h-2 rounded-full bg-brand-500 animate-bounce [animation-delay:0.2s]"></span>
+                <span className="w-2 h-2 rounded-full bg-brand-500 animate-bounce [animation-delay:0.4s]"></span>
+                <span className="text-xs text-slate-600 ml-1">Analyzing consular policies...</span>
+              </div>
+            </div>
+          )}
+
+          {/* Uploading Indicator */}
+          {isUploadingDoc && (
+            <div className="flex gap-3 items-center text-xs text-slate-500 italic">
+              <div className="w-8 h-8 rounded-full bg-brand-50 border border-brand-100 text-brand-600 flex items-center justify-center">
+                <UploadCloud className="w-4 h-4 animate-pulse" />
+              </div>
+              <div className="flex items-center gap-2 p-3 rounded-2xl bg-brand-50/50 border border-brand-100 text-brand-900">
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-brand-600" />
+                <span>Validating document format and running AI OCR extraction...</span>
+              </div>
+            </div>
+          )}
+
+          <div ref={chatEndRef} />
+        </div>
+
+        {/* Chat Input Bar */}
+        <div className="p-4 border-t border-slate-200 bg-white">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSend();
+            }}
+            className="flex items-center gap-2"
+          >
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              title="Upload Passport or Bank Statement (PDF, JPG, PNG)"
+              className="p-2.5 rounded-xl border border-slate-200 hover:border-brand-500 text-slate-500 hover:text-brand-600 hover:bg-brand-50 transition-colors cursor-pointer"
+            >
+              <Paperclip className="w-5 h-5" />
+            </button>
+
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask visa questions, upload documents, or type 'Verify passport'..."
+              className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all text-slate-900"
+            />
+
+            <Button
+              type="submit"
+              disabled={!input.trim()}
+              variant="primary"
+              size="md"
+              className="px-4 py-2.5 rounded-xl"
+            >
+              <Send className="w-4 h-4" />
+            </Button>
+          </form>
+          <div className="flex items-center justify-between text-[11px] text-slate-400 mt-2 px-1">
+            <span>Supported formats: PDF, JPG, PNG, WEBP (Max 10MB)</span>
+            <span>Secured via Official Paystack Payment Gateway</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Sidebar: Active Travel Dossier */}
+      <div className="w-96 border-l border-slate-200 bg-slate-50/50 flex flex-col h-full overflow-y-auto p-5 space-y-5 hidden lg:flex">
+        {/* Readiness Meter */}
+        <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-card">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Travel Readiness</span>
+            <span className="text-sm font-black text-brand-600">{readinessScore}%</span>
+          </div>
+          <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-brand-600 rounded-full transition-all duration-700 ease-out"
+              style={{ width: `${readinessScore}%` }}
+            ></div>
+          </div>
+        </div>
+
+        {/* 1. Passport Compliance Card */}
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-subtle space-y-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+              <Fingerprint className="w-3.5 h-3.5 text-slate-500" />
+              Passport Validity
+            </span>
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+              tripDossier.passport.status === "verified"
+                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                : "bg-amber-50 text-amber-700 border border-amber-200"
+            }`}>
+              {tripDossier.passport.status === "verified" ? "Verified (60 Mos) ✓" : "Requires Check"}
+            </span>
+          </div>
+          <div className="text-xs text-slate-600 space-y-1">
+            <div className="flex justify-between">
+              <span className="text-slate-400">Holder:</span>
+              <span className="font-semibold text-slate-900">{tripDossier.passport.name}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">Number:</span>
+              <span className="font-mono font-medium text-slate-900">{tripDossier.passport.number}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">Expiry:</span>
+              <span className="font-medium text-slate-900">{tripDossier.passport.expiry}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* 2. Bank Statement & Funds Card */}
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-subtle space-y-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+              <CreditCard className="w-3.5 h-3.5 text-slate-500" />
+              6-Month Bank Audit
+            </span>
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+              tripDossier.funds.status === "verified"
+                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                : "bg-slate-100 text-slate-600 border border-slate-200"
+            }`}>
+              {tripDossier.funds.status === "verified" ? "Sufficient (+232%) ✓" : "Pending Audit"}
+            </span>
+          </div>
+          <div className="text-xs text-slate-600 space-y-1">
+            <div className="flex justify-between">
+              <span className="text-slate-400">Average Balance:</span>
+              <span className="font-bold text-slate-900">₦8,850,000</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">UKVI Threshold:</span>
+              <span className="font-medium text-slate-900">£1,270 (₦2.66M)</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">Surplus:</span>
+              <span className="font-bold text-emerald-700">+₦6,183,000</span>
+            </div>
+          </div>
+        </div>
+
+        {/* 3. Visa Fee & Biometrics */}
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-subtle space-y-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-slate-500" />
+              Visa Fee & VFS
+            </span>
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+              tripDossier.feePaid
+                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                : "bg-slate-100 text-slate-600"
+            }`}>
+              {tripDossier.feePaid ? "Paid via Paystack ✓" : "Unpaid"}
+            </span>
+          </div>
+          <div className="text-xs text-slate-600 space-y-1">
+            <div className="flex justify-between">
+              <span className="text-slate-400">Visa Type:</span>
+              <span className="font-medium text-slate-900">{tripDossier.visaType}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">Fee Amount:</span>
+              <span className="font-bold text-slate-900">₦380,000</span>
+            </div>
+            {tripDossier.appointment.status === "confirmed" && (
+              <div className="flex justify-between border-t border-slate-100 pt-1">
+                <span className="text-slate-400">VFS Ref:</span>
+                <span className="font-mono font-bold text-emerald-700">{tripDossier.appointment.gwfRef}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 4. Flight & Accommodation Status */}
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-subtle space-y-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+              <Plane className="w-3.5 h-3.5 text-slate-500" />
+              Flights & Accommodation
+            </span>
+          </div>
+          <div className="text-xs text-slate-600 space-y-1">
+            <div className="flex justify-between items-center">
+              <span className="text-slate-400">Flight PNR:</span>
+              <span className={`font-mono font-bold ${tripDossier.flight.status === "paid" ? "text-emerald-700" : "text-slate-400"}`}>
+                {tripDossier.flight.status === "paid" ? tripDossier.flight.pnr : "Not Booked"}
               </span>
             </div>
-
-            {/* Stage Checkpoints */}
-            <div className="space-y-3 text-xs">
-              {/* Checkpoint 1: Passport */}
-              <div className="p-3.5 rounded-2xl border flex items-center justify-between bg-slate-50 border-slate-200">
-                <div className="flex items-center gap-2.5">
-                  <Fingerprint className="w-4 h-4 text-slate-700" />
-                  <div>
-                    <div className="font-bold text-slate-900">1. Passport Validity Check</div>
-                    <div className="text-[11px] text-slate-500">
-                      {tripDossier.passport.status === "verified"
-                        ? `A12345678 (Expires ${tripDossier.passport.expiry})`
-                        : "Pending Verification"}
-                    </div>
-                  </div>
-                </div>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                  tripDossier.passport.status === "verified"
-                    ? "bg-emerald-100 text-emerald-800"
-                    : "bg-slate-200 text-slate-600"
-                }`}>
-                  {tripDossier.passport.status === "verified" ? "✓ Verified" : "Pending"}
-                </span>
-              </div>
-
-              {/* Checkpoint 2: Bank Statement */}
-              <div className="p-3.5 rounded-2xl border flex items-center justify-between bg-slate-50 border-slate-200">
-                <div className="flex items-center gap-2.5">
-                  <Building2 className="w-4 h-4 text-slate-700" />
-                  <div>
-                    <div className="font-bold text-slate-900">2. 6-Month Bank Statement</div>
-                    <div className="text-[11px] text-slate-500">
-                      {tripDossier.bankStatement.status === "verified"
-                        ? `₦8.55M Average Balance (Passed £1,270 rule)`
-                        : "Threshold Evaluation"}
-                    </div>
-                  </div>
-                </div>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                  tripDossier.bankStatement.status === "verified"
-                    ? "bg-emerald-100 text-emerald-800"
-                    : "bg-slate-200 text-slate-600"
-                }`}>
-                  {tripDossier.bankStatement.status === "verified" ? "✓ Passed" : "Pending"}
-                </span>
-              </div>
-
-              {/* Checkpoint 3: VFS Appointment */}
-              <div className="p-3.5 rounded-2xl border flex items-center justify-between bg-slate-50 border-slate-200">
-                <div className="flex items-center gap-2.5">
-                  <Calendar className="w-4 h-4 text-slate-700" />
-                  <div>
-                    <div className="font-bold text-slate-900">3. VFS Biometrics Appointment</div>
-                    <div className="text-[11px] text-slate-500">
-                      {tripDossier.appointment.status === "confirmed"
-                        ? `${tripDossier.appointment.gwfRef} (${tripDossier.appointment.date})`
-                        : "Interview Scheduling"}
-                    </div>
-                  </div>
-                </div>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                  tripDossier.appointment.status === "confirmed"
-                    ? "bg-emerald-100 text-emerald-800"
-                    : "bg-slate-200 text-slate-600"
-                }`}>
-                  {tripDossier.appointment.status === "confirmed" ? "✓ Booked" : "Pending"}
-                </span>
-              </div>
-
-              {/* Checkpoint 4: Flight PNR Hold */}
-              <div className="p-3.5 rounded-2xl border flex items-center justify-between bg-slate-50 border-slate-200">
-                <div className="flex items-center gap-2.5">
-                  <Plane className="w-4 h-4 text-slate-700" />
-                  <div>
-                    <div className="font-bold text-slate-900">4. Flight Ticket & PNR Hold</div>
-                    <div className="text-[11px] text-slate-500">
-                      {tripDossier.flight.status === "confirmed"
-                        ? `${tripDossier.flight.airline} (PNR: ${tripDossier.flight.pnr})`
-                        : "Direct Departure Routing"}
-                    </div>
-                  </div>
-                </div>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                  tripDossier.flight.status === "confirmed"
-                    ? "bg-emerald-100 text-emerald-800"
-                    : "bg-slate-200 text-slate-600"
-                }`}>
-                  {tripDossier.flight.status === "confirmed" ? "✓ Paid & Held" : "Pending"}
-                </span>
-              </div>
-
-              {/* Checkpoint 5: Hotel Stay Voucher */}
-              <div className="p-3.5 rounded-2xl border flex items-center justify-between bg-slate-50 border-slate-200">
-                <div className="flex items-center gap-2.5">
-                  <Hotel className="w-4 h-4 text-slate-700" />
-                  <div>
-                    <div className="font-bold text-slate-900">5. Hotel Consular Voucher</div>
-                    <div className="text-[11px] text-slate-500">
-                      {tripDossier.hotel.status === "confirmed"
-                        ? `${tripDossier.hotel.name} (${tripDossier.hotel.reference})`
-                        : "Certified Proof of Stay"}
-                    </div>
-                  </div>
-                </div>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                  tripDossier.hotel.status === "confirmed"
-                    ? "bg-emerald-100 text-emerald-800"
-                    : "bg-slate-200 text-slate-600"
-                }`}>
-                  {tripDossier.hotel.status === "confirmed" ? "✓ Confirmed" : "Pending"}
-                </span>
-              </div>
-            </div>
-
-            {/* Quick Demo Launchers */}
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-              <span className="text-[11px] font-bold uppercase text-slate-500 block">
-                Praise Demo Quick Launchers:
+            <div className="flex justify-between items-center">
+              <span className="text-slate-400">Hotel Voucher:</span>
+              <span className={`font-mono font-bold ${tripDossier.hotel.status === "paid" ? "text-emerald-700" : "text-slate-400"}`}>
+                {tripDossier.hotel.status === "paid" ? tripDossier.hotel.voucherRef : "Not Booked"}
               </span>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => handleJumpToStep(4)}
-                  className="p-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-800 font-bold text-[11px] text-left transition-all cursor-pointer"
-                >
-                  🏦 Test Bank Statement
-                </button>
-                <button
-                  onClick={() => handleJumpToStep(5)}
-                  className="p-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-800 font-bold text-[11px] text-left transition-all cursor-pointer"
-                >
-                  💳 Test Paystack Visa Fee
-                </button>
-                <button
-                  onClick={() => handleJumpToStep(6)}
-                  className="p-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-800 font-bold text-[11px] text-left transition-all cursor-pointer"
-                >
-                  📅 Test VFS Interview
-                </button>
-                <button
-                  onClick={() => handleJumpToStep(9)}
-                  className="p-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-800 font-bold text-[11px] text-left transition-all cursor-pointer"
-                >
-                  ✈️ Test Paystack Flight
-                </button>
-              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Paystack Checkout Modal */}
-      <PaystackModal
-        isOpen={paystackOpen}
-        onClose={() => setPaystackOpen(false)}
-        onSuccess={(receipt) => {
-          if (paystackCallback) paystackCallback(receipt);
-        }}
-        amountNgn={paystackAmount}
-        purpose={paystackPurpose}
-        title={paystackTitle}
-        userEmail={user?.email || "applicant@travelforge.com"}
-      />
+      {/* Full Dossier Preview Modal */}
+      {previewDossierModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-dropdown max-w-lg w-full p-6 relative">
+            <button
+              onClick={() => setPreviewDossierModal(false)}
+              className="absolute top-5 right-5 p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Consular Clearance Dossier</h3>
+                <p className="text-xs text-slate-500">Applicant: Tunde Babatunde Adeyemi</p>
+              </div>
+            </div>
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3 text-xs">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Passport Status:</span>
+                <span className="font-bold text-emerald-700">{tripDossier.passport.status === "verified" ? "Verified (60 Mos Remaining)" : "Unverified"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">6-Month Bank Average:</span>
+                <span className="font-bold text-emerald-700">{tripDossier.funds.status === "verified" ? "₦8,850,000 (Sufficient)" : "Pending"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Visa Application Fee:</span>
+                <span className="font-bold text-slate-900">{tripDossier.feePaid ? `Paid (${tripDossier.paymentRef})` : "Unpaid"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Flight PNR:</span>
+                <span className="font-bold text-slate-900">{tripDossier.flight.pnr || "None"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Hotel Voucher:</span>
+                <span className="font-bold text-slate-900">{tripDossier.hotel.voucherRef || "None"}</span>
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <Button variant="primary" size="sm" onClick={() => setPreviewDossierModal(false)}>
+                Close Preview
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
