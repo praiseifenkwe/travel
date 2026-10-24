@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     # ChromaDB
     CHROMA_PERSIST_PATH: str = "./chroma_storage"
     CHROMA_COLLECTION_NAME: str = "business_knowledge"
+    RAG_DISTANCE_THRESHOLD: float = 0.55  # Chroma cosine distance; lower is a closer match
 
     # LLM
     CHAT_MODEL: str = "gemini-1.5-flash"

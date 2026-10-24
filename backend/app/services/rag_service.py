@@ -160,11 +160,21 @@ async def retrieve_context(
     Direct query_texts search → similarity lookup → return formatted context string.
     Chroma embeds the query text automatically using local all-MiniLM-L6-v2.
     """
+    result = await retrieve_context_with_scores(query, n_results, filter_metadata)
+    return result["context"]
+
+
+async def retrieve_context_with_scores(
+    query: str,
+    n_results: int = None,
+    filter_metadata: Optional[Dict[str, str]] = None,
+) -> Dict[str, Any]:
+    """Retrieve formatted context together with Chroma cosine distances."""
     n_results = n_results or settings.RAG_TOP_K
     collection = get_collection()
 
     if collection.count() == 0:
-        return ""
+        return {"context": "", "distances": [], "sources": []}
 
     results = collection.query(
         query_texts=[query],
@@ -173,16 +183,25 @@ async def retrieve_context(
         include=["documents", "metadatas", "distances"],
     )
 
-    chunks = results["documents"][0]
-    metas = results["metadatas"][0]
+    chunks = results["documents"][0] or []
+    metas = results["metadatas"][0] or []
+    distances = results["distances"][0] or []
 
     # Format as numbered context blocks
     context_blocks = []
+    sources = []
     for i, (chunk, meta) in enumerate(zip(chunks, metas), start=1):
+        if not chunk:
+            continue
         source = meta.get("source_name", "Unknown")
         context_blocks.append(f"[{i}] Source: {source}\n{chunk}")
+        sources.append(source)
 
-    return "\n\n".join(context_blocks)
+    return {
+        "context": "\n\n".join(context_blocks),
+        "distances": distances,
+        "sources": sources,
+    }
 
 
 async def get_collection_stats() -> Dict[str, Any]:

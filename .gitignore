@@ -1,27 +1,33 @@
 # Dependencies
 node_modules/
-frontend/node_modules/
-backend/venv/
 venv/
+.venv/
 
 # Environment Variables
 .env
-backend/.env
-frontend/.env
-*.env.local
+.env.*
+!.env.example
+!**/.env.example
 
 # Python Cache
 __pycache__/
 *.py[cod]
 *$py.class
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
 
 # Build Output
-frontend/dist/
 dist/
 build/
+*.egg-info/
 
 # Uploads & User Files
+uploads/*
+!uploads/.gitkeep
 backend/uploads/*
 !backend/uploads/.gitkeep
 
@@ -31,5 +37,10 @@ Thumbs.db
 .vscode/
 .idea/
 *.log
+
+# Local databases and vector-store data
+*.db
+*.sqlite
+*.sqlite3
 backend/chroma_storage/
 chroma_storage/
