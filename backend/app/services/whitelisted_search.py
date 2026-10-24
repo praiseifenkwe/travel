@@ -11,7 +11,7 @@ Responsibilities:
 
 import logging
 import re
-from urllib.parse import urljoin, urlparse
+from urllib.parse import quote, urljoin, urlparse
 from typing import Optional, Dict, Any, List
 from bs4 import BeautifulSoup
 import httpx
@@ -23,6 +23,34 @@ from app.models.trusted_sources import TrustedSource, AuditTicket
 logger = logging.getLogger(__name__)
 MAX_PAGE_BYTES = 1_000_000
 MAX_REDIRECTS = 3
+
+_ROUTE_DESTINATION_RE = re.compile(
+    r"\b(?:to|into|moving\s+to|travel(?:ing|ling)?\s+to|destination(?:\s+is)?)\s+"
+    r"(?P<destination>[a-z][a-z\s/-]{0,80})",
+    re.IGNORECASE,
+)
+_UK_DESTINATION_RE = re.compile(
+    r"\b(uk|united kingdom|britain|england|scotland|wales|ukvi|"
+    r"gov\.uk|home office|asylum|refugee|settlement|ilr|brp|british|"
+    r"london|manchester|birmingham|edinburgh|cardiff|belfast)\b",
+    re.IGNORECASE,
+)
+_US_DESTINATION_RE = re.compile(
+    r"\b(us|usa|united states|america|b1|b2|ds-?160|new york|"
+    r"los angeles|chicago|washington(?:,\s*d\.?c\.?)?)\b",
+    re.IGNORECASE,
+)
+
+
+def infer_destination_jurisdiction(query: str) -> Optional[str]:
+    """Infer a supported destination, preferring the destination in a route."""
+    route_match = _ROUTE_DESTINATION_RE.search(query)
+    destination = route_match.group("destination") if route_match else query
+    mentions_uk = _UK_DESTINATION_RE.search(destination) is not None
+    mentions_us = _US_DESTINATION_RE.search(destination) is not None
+    if mentions_uk == mentions_us:
+        return None
+    return "UK" if mentions_uk else "US"
 
 
 def get_trusted_sources(country: Optional[str] = None, only_active: bool = True) -> List[TrustedSource]:
@@ -56,12 +84,36 @@ def match_trusted_source(url: str) -> Optional[TrustedSource]:
     ):
         return None
 
-    with Session(engine) as session:
-        active_sources = session.exec(select(TrustedSource).where(TrustedSource.is_active == True)).all()
-        for src in active_sources:
-            trusted_domain = src.domain.lower().rstrip(".")
-            if domain == trusted_domain or domain.endswith(f".{trusted_domain}"):
-                return src
+    try:
+        with Session(engine) as session:
+            active_sources = session.exec(select(TrustedSource).where(TrustedSource.is_active == True)).all()
+            for src in active_sources:
+                trusted_domain = src.domain.lower().rstrip(".")
+                if domain == trusted_domain or domain.endswith(f".{trusted_domain}"):
+                    return src
+    except Exception:
+        pass
+
+    if domain in ("gov.uk", "www.gov.uk") or domain.endswith(".gov.uk"):
+        return TrustedSource(
+            name="UK Government (GOV.UK)",
+            domain="gov.uk",
+            base_url="https://www.gov.uk",
+            jurisdiction_country="UK",
+            trust_level="official",
+            can_answer_autonomously=True,
+            is_active=True,
+        )
+    if domain in ("travel.state.gov", "www.travel.state.gov") or domain.endswith(".state.gov"):
+        return TrustedSource(
+            name="US Department of State",
+            domain="travel.state.gov",
+            base_url="https://travel.state.gov",
+            jurisdiction_country="US",
+            trust_level="official",
+            can_answer_autonomously=True,
+            is_active=True,
+        )
     return None
 
 
@@ -181,7 +233,7 @@ def create_audit_ticket(
 
 async def resolve_whitelisted_fallback(query: str) -> Optional[Dict[str, Any]]:
     """
-    Called when local ChromaDB has low confidence or no documents.
+    Called when pgvector retrieval has low confidence or no documents.
     Detects jurisdiction from user query, queries PostgreSQL trusted_sources,
     and scrapes live verified official guidance on the spot.
     """
@@ -195,19 +247,10 @@ async def resolve_whitelisted_fallback(query: str) -> Optional[Dict[str, Any]]:
             logger.info("Skipped pasted URL because it is not on the trusted-source whitelist")
             return None
     else:
-        mentions_uk = re.search(
-            r"\b(uk|united kingdom|britain|england|scotland|wales|ukvi)\b", q_lower
-        )
-        mentions_us = re.search(
-            r"\b(us|usa|united states|america|b1|b2|ds-?160)\b", q_lower
-        )
-        if mentions_uk and mentions_us:
-            return None
-        if mentions_uk:
-            country = "UK"
+        country = infer_destination_jurisdiction(query)
+        if country == "UK":
             preferred_domain = "gov.uk"
-        elif mentions_us:
-            country = "US"
+        elif country == "US":
             preferred_domain = "travel.state.gov"
         elif re.search(r"\b(vfs|biometric|visa application cent(?:er|re))\b", q_lower):
             country = "GLOBAL"
@@ -215,27 +258,71 @@ async def resolve_whitelisted_fallback(query: str) -> Optional[Dict[str, Any]]:
         else:
             return None
 
-        with Session(engine) as session:
-            sources = session.exec(
-                select(TrustedSource).where(
-                    TrustedSource.is_active == True,
-                    TrustedSource.can_answer_autonomously == True,
-                    TrustedSource.jurisdiction_country.in_([country, "GLOBAL"]),
-                )
-            ).all()
-            source = next(
-                (item for item in sources if item.domain.lower() == preferred_domain),
-                None,
-            )
+        source = None
+        if preferred_domain:
+            try:
+                with Session(engine) as session:
+                    sources = session.exec(
+                        select(TrustedSource).where(
+                            TrustedSource.is_active == True,
+                            TrustedSource.can_answer_autonomously == True,
+                            TrustedSource.jurisdiction_country.in_([country, "GLOBAL"]),
+                        )
+                    ).all()
+                    source = next(
+                        (item for item in sources if item.domain.lower() == preferred_domain),
+                        None,
+                    )
+            except Exception:
+                pass
+
         if not source:
-            return None
+            if preferred_domain == "gov.uk":
+                source = TrustedSource(
+                    name="UK Government (GOV.UK)",
+                    domain="gov.uk",
+                    base_url="https://www.gov.uk",
+                    jurisdiction_country="UK",
+                    trust_level="official",
+                    can_answer_autonomously=True,
+                    is_active=True,
+                )
+            elif preferred_domain == "travel.state.gov":
+                source = TrustedSource(
+                    name="US Department of State",
+                    domain="travel.state.gov",
+                    base_url="https://travel.state.gov",
+                    jurisdiction_country="US",
+                    trust_level="official",
+                    can_answer_autonomously=True,
+                    is_active=True,
+                )
+            else:
+                return None
 
         target_url = source.base_url
         if preferred_domain == "gov.uk":
-            if any(term in q_lower for term in ("visitor", "visit", "tourist", "holiday")):
-                target_url = "https://www.gov.uk/standard-visitor/eligibility"
-            elif "skilled worker" in q_lower:
-                target_url = "https://www.gov.uk/skilled-worker-visa"
+            clean_search = re.sub(r"Destination jurisdiction:.*$", "", query, flags=re.IGNORECASE).strip()
+            clean_search = re.sub(r"^(?:can u |can you |please |let'?s? talk about |tell me about |what is |how about )?(?:the )?(?:search |look up |check )?(?:gov\.uk )?(?:about |for )?", "", clean_search, flags=re.IGNORECASE).strip()
+            clean_search = clean_search or query
+            try:
+                async with httpx.AsyncClient(timeout=5.0, headers={"User-Agent": "TravelForge-Compliance-Verifier/2.0"}) as search_client:
+                    resp = await search_client.get(f"https://www.gov.uk/api/search.json?q={quote(clean_search)}")
+                    if resp.status_code == 200:
+                        results = resp.json().get("results", [])
+                        if results and results[0].get("link"):
+                            link = results[0]["link"]
+                            if not link.startswith("http"):
+                                link = f"https://www.gov.uk{link}"
+                            target_url = link
+            except Exception as exc:
+                logger.warning("GOV.UK dynamic search failed: %s", exc)
+
+            if target_url == source.base_url:
+                if any(term in q_lower for term in ("visitor", "visit", "tourist", "holiday")):
+                    target_url = "https://www.gov.uk/standard-visitor/eligibility"
+                elif "skilled worker" in q_lower:
+                    target_url = "https://www.gov.uk/skilled-worker-visa"
         elif preferred_domain == "travel.state.gov" and any(
             term in q_lower for term in ("visitor", "visit", "tourist", "tourism", "b1", "b2")
         ):
