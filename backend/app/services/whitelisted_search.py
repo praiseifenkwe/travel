@@ -44,10 +44,22 @@ _US_DESTINATION_RE = re.compile(
 
 def infer_destination_jurisdiction(query: str) -> Optional[str]:
     """Infer a supported destination, preferring the destination in a route."""
+    if "Destination jurisdiction: United Kingdom" in query or "(UK)" in query:
+        return "UK"
+    if "Destination jurisdiction: United States" in query or "Destination jurisdiction: US" in query:
+        return "US"
+
     route_match = _ROUTE_DESTINATION_RE.search(query)
-    destination = route_match.group("destination") if route_match else query
-    mentions_uk = _UK_DESTINATION_RE.search(destination) is not None
-    mentions_us = _US_DESTINATION_RE.search(destination) is not None
+    if route_match and not route_match.group("destination").lower().startswith("jurisdiction"):
+        destination = route_match.group("destination")
+        mentions_uk = _UK_DESTINATION_RE.search(destination) is not None
+        mentions_us = _US_DESTINATION_RE.search(destination) is not None
+        if mentions_uk == mentions_us:
+            return None
+        return "UK" if mentions_uk else "US"
+
+    mentions_uk = _UK_DESTINATION_RE.search(query) is not None
+    mentions_us = _US_DESTINATION_RE.search(query) is not None
     if mentions_uk == mentions_us:
         return None
     return "UK" if mentions_uk else "US"
@@ -307,6 +319,9 @@ async def resolve_whitelisted_fallback(query: str) -> Optional[Dict[str, Any]]:
         target_url = source.base_url
         if preferred_domain == "gov.uk":
             clean_search = re.sub(r"Destination jurisdiction:.*$", "", query, flags=re.IGNORECASE).strip()
+            parts = re.split(r"\b(?=can u|can you|let'?s? talk about|tell me about|what about|how about|what is|how do i|where do i)\b", clean_search, flags=re.IGNORECASE)
+            if parts and parts[-1].strip():
+                clean_search = parts[-1].strip()
             clean_search = re.sub(r"^(?:can u |can you |please |let'?s? talk about |tell me about |what is |how about )?(?:the )?(?:search |look up |check )?(?:gov\.uk )?(?:about |for )?", "", clean_search, flags=re.IGNORECASE).strip()
             clean_search = re.sub(r"\brefuge\b", "refugee", clean_search, flags=re.IGNORECASE)
             clean_search = clean_search or query
