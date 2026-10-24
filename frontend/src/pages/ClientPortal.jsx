@@ -47,38 +47,56 @@ import { VisaApprovalCard } from "../components/chat/VisaApprovalCard";
 import { FlightCards } from "../components/flights/FlightCards";
 import { HotelCards } from "../components/accommodations/HotelCards";
 
-// Formatted markdown message renderer
+// Clean, robust markdown text and bold renderer
+const renderMarkdownInline = (text) => {
+  if (!text) return "";
+  const parts = [];
+  const regex = /\*\*(.*?)\*\*/g;
+  let lastIndex = 0;
+  let match;
+
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.substring(lastIndex, match.index));
+    }
+    parts.push(
+      <strong key={match.index} className="font-extrabold text-slate-900">
+        {match[1]}
+      </strong>
+    );
+    lastIndex = regex.lastIndex;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(text.substring(lastIndex));
+  }
+
+  return parts;
+};
+
 const FormattedMessage = ({ text }) => {
   if (!text) return null;
   const lines = text.split("\n");
-  return (
-    <div className="space-y-1.5 leading-relaxed text-xs sm:text-sm">
-      {lines.map((line, idx) => {
-        if (!line.trim()) return <div key={idx} className="h-1" />;
-        
-        // Parse bold segments **...**
-        const parts = line.split(/(\**[^*]+\**)/g);
-        const formattedLine = parts.map((part, pIdx) => {
-          if (part.startsWith("**") && part.endsWith("**")) {
-            return (
-              <strong key={pIdx} className="font-extrabold text-slate-900">
-                {part.slice(2, -2)}
-              </strong>
-            );
-          }
-          return part;
-        });
 
-        if (line.trim().startsWith("•")) {
+  return (
+    <div className="space-y-2 leading-relaxed text-xs sm:text-sm text-slate-800">
+      {lines.map((line, idx) => {
+        const trimmed = line.trim();
+        if (!trimmed) return <div key={idx} className="h-1.5" />;
+
+        // Clean bullet list line (strip leading bullet/dash/asterisk cleanly)
+        if (trimmed.startsWith("•") || trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
+          const content = trimmed.replace(/^[•\-\*]\s*/, "");
           return (
-            <div key={idx} className="flex items-start gap-2 pl-1">
-              <span className="text-indigo-600 font-bold shrink-0 mt-0.5">•</span>
-              <span>{formattedLine.slice(1)}</span>
+            <div key={idx} className="flex items-start gap-2.5 pl-1 my-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 mt-2 shrink-0" />
+              <div className="flex-1">{renderMarkdownInline(content)}</div>
             </div>
           );
         }
 
-        return <div key={idx}>{formattedLine}</div>;
+        // Regular line
+        return <div key={idx}>{renderMarkdownInline(trimmed)}</div>;
       })}
     </div>
   );
