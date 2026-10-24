@@ -1,9 +1,11 @@
-﻿import React from "react";
+import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Plane, Sparkles, ShieldCheck, Compass } from "lucide-react";
+import { Sparkles, ShieldCheck, Compass, LogIn, LogOut, User } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
 
 export const Navbar = () => {
   const location = useLocation();
+  const { user, openAuthModal, logout, loading } = useAuth();
 
   return (
     <header className="sticky top-3 z-50 px-4 sm:px-6">
@@ -62,12 +64,38 @@ export const Navbar = () => {
           </Link>
         </nav>
 
-        {/* Right Status Indicator */}
-        <div className="hidden sm:flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold text-slate-600 bg-slate-50 border border-slate-200/60">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>AI Concierge</span>
-          </span>
+        {/* Right Auth / Account Area */}
+        <div className="flex items-center gap-2">
+          {!loading && user ? (
+            <div className="flex items-center gap-2">
+              <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100/80 border border-slate-200/70 text-slate-800 text-xs font-medium">
+                <div className="w-5 h-5 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px] font-bold">
+                  {user.name ? user.name.charAt(0).toUpperCase() : "U"}
+                </div>
+                <span className="max-w-[120px] truncate font-semibold text-slate-900">
+                  {user.name || user.email}
+                </span>
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-700 border border-brand-200/60 uppercase">
+                  {user.user_type || "Client"}
+                </span>
+              </div>
+              <button
+                onClick={logout}
+                title="Sign Out"
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-600 flex items-center justify-center transition-colors border border-slate-200/60"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => openAuthModal("login")}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold text-slate-900 bg-slate-100 hover:bg-slate-200/80 border border-slate-200/80 transition-all hover:scale-105"
+            >
+              <LogIn className="w-3.5 h-3.5 text-brand-600" />
+              <span>Sign In</span>
+            </button>
+          )}
         </div>
       </div>
     </header>

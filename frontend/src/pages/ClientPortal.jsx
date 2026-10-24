@@ -33,10 +33,15 @@ import {
 } from "lucide-react";
 import { Button } from "../components/shared/Button";
 import { Link } from "react-router-dom";
-import { apiService } from "../services/api";
+import { apiService, formatApiError } from "../services/api";
+import { useAuth } from "../context/AuthContext";
 
 export const ClientPortal = () => {
-  const [sessionId] = useState(() => "session-" + Math.random().toString(36).substring(2, 9));
+  const { user, openAuthModal } = useAuth();
+  const storageKey = user ? `travelforge_session_${user.id}` : "travelforge_session_guest";
+  const [sessionId, setSessionId] = useState(() => localStorage.getItem(storageKey) || null);
+  const [auditResult, setAuditResult] = useState(null);
+  const [isAuditing, setIsAuditing] = useState(false);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [scanningPassport, setScanningPassport] = useState(false);
@@ -44,6 +49,37 @@ export const ClientPortal = () => {
   const [previewDossierModal, setPreviewDossierModal] = useState(false);
   const chatEndRef = useRef(null);
   const fileInputRef = useRef(null);
+
+  // Restore saved messages from backend on login or session change
+  useEffect(() => {
+    const key = user ? `travelforge_session_${user.id}` : "travelforge_session_guest";
+    const saved = localStorage.getItem(key);
+    if (saved) {
+      setSessionId(saved);
+      if (user) {
+        apiService.chat.getHistory(saved)
+          .then((history) => {
+            if (Array.isArray(history) && history.length > 0) {
+              const formatted = history.map((item, idx) => ({
+                id: item.created_at ? new Date(item.created_at).getTime() + idx : Date.now() + idx,
+                role: item.role,
+                text: item.content,
+                type: "text",
+              }));
+              setMessages(formatted);
+            }
+          })
+          .catch((err) => {
+            if (err.response?.status === 404 || err.response?.status === 401) {
+              localStorage.removeItem(key);
+              setSessionId(null);
+            }
+          });
+      }
+    } else {
+      setSessionId(null);
+    }
+  }, [user]);
 
   // Live Trip State (Synthesized on the fly by the AI Concierge)
   const [tripDossier, setTripDossier] = useState({
@@ -117,11 +153,31 @@ export const ClientPortal = () => {
 
     const lower = text.toLowerCase();
 
+    // Enforce authentication before starting consular intake
+    if (!user) {
+      setIsTyping(false);
+      openAuthModal("login");
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now() + 1,
+          role: "assistant",
+          text: "Please sign in or create an account with TravelForge to start your consular intake consultation. Your conversation history and verified travel dossier will be safely linked to your account.",
+          type: "text",
+        },
+      ]);
+      return;
+    }
+
     // 1. First attempt to query the real backend RAG service
     try {
-      const backendRes = await apiService.chat.sendMessage(text, sessionId);
-      if (backendRes && backendRes.reply && !backendRes.fallback) {
+      const backendRes = await apiService.chat.sendMessage(text, sessionId || undefined);
+      if (backendRes && backendRes.reply) {
         setIsTyping(false);
+        if (backendRes.session_id) {
+          setSessionId(backendRes.session_id);
+          localStorage.setItem(storageKey, backendRes.session_id);
+        }
         setMessages((prev) => [
           ...prev,
           {
@@ -129,13 +185,45 @@ export const ClientPortal = () => {
             role: "assistant",
             text: backendRes.reply,
             sources: backendRes.sources || [],
+            stage: backendRes.stage || "intake",
             type: "text",
           },
         ]);
         return;
       }
     } catch (e) {
-      console.warn("Backend chat unavailable, using conversational fallback");
+      console.warn("Backend chat error:", e.message);
+      if (e.response?.status === 401) {
+        setIsTyping(false);
+        openAuthModal("login");
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now() + 1,
+            role: "assistant",
+            text: "Your session has expired. Please sign in again to continue chatting and retain your travel dossier.",
+            type: "text",
+          },
+        ]);
+        return;
+      }
+      if (e.response?.status === 503) {
+        setIsTyping(false);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now() + 1,
+            role: "assistant",
+            text: "The AI Consular service is temporarily busy. Please retry in a few moments.",
+            type: "text",
+          },
+        ]);
+        return;
+      }
+      if (e.response?.status === 404) {
+        localStorage.removeItem(storageKey);
+        setSessionId(null);
+      }
     }
 
     // 2. High-Fidelity Conversational Engine
@@ -349,7 +437,42 @@ export const ClientPortal = () => {
   const progressPercent = Math.round((completedCount / 3) * 100);
   const isDossierComplete = completedCount === 3;
 
-﻿  return (
+﻿  // Compliance Audit Execution
+  const handleExecuteAudit = async () => {
+    if (!user) {
+      openAuthModal("login");
+      return;
+    }
+    setIsAuditing(true);
+    try {
+      if (sessionId) {
+        const auditRes = await apiService.audit.evaluate(
+          sessionId,
+          {
+            name: tripDossier.passport.name || user.name,
+            email: user.email,
+            passport_number: tripDossier.passport.number,
+            passport_expiry: tripDossier.passport.expiry,
+            nationality: tripDossier.passport.nationality || "Nigerian",
+            destination: tripDossier.destination,
+            airline: tripDossier.flight.airline,
+            flight_pnr: tripDossier.flight.pnr,
+            hotel_name: tripDossier.hotel.name,
+            hotel_ref: tripDossier.hotel.reference,
+          },
+          tripDossier.countryCode === "GB" ? "uk_standard_visitor" : "dubai_tourist_30d"
+        );
+        setAuditResult(auditRes);
+      }
+    } catch (err) {
+      console.warn("Audit evaluation error:", err.message);
+    } finally {
+      setIsAuditing(false);
+      setSubmittedModal(true);
+    }
+  };
+
+  return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       {/* Editorial Luxury Header */}
       <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4 pb-5 border-b border-slate-200/60">
@@ -380,18 +503,25 @@ export const ClientPortal = () => {
               TA
             </div>
             <div className="text-left">
-              <div className="text-xs font-bold text-slate-900 leading-none">Tunde Adeyemi</div>
-              <div className="text-[10px] text-slate-400 mt-0.5 leading-none">Nigerian Passport (NGN)</div>
+              <div className="text-xs font-bold text-slate-900 leading-none">
+                {user ? (user.name || user.email) : "Guest Traveler"}
+              </div>
+              <div className="text-[10px] text-slate-400 mt-0.5 leading-none">
+                {user ? `Signed In (${user.user_type || "Client"})` : "Sign In to Save Dossier"}
+              </div>
             </div>
           </div>
 
           <button
             onClick={() => {
+              setSessionId(null);
+              const key = user ? `travelforge_session_${user.id}` : "travelforge_session_guest";
+              localStorage.removeItem(key);
               setMessages([
                 {
                   id: 1,
                   role: "assistant",
-                  text: "Hello Tunde. Welcome to your travel intake workspace.\n\nWhere would you like to travel next?",
+                  text: `Hello ${user?.name ? user.name.split(" ")[0] : "Traveler"}. Welcome to your travel intake workspace.\n\nI will assemble your consular dossier, verify passport compliance, and reserve direct flights on the fly — zero paperwork or form-filling required.\n\nWhere would you like to travel next?`,
                   type: "text",
                   options: [
                     "🇦🇪 Dubai Vacation (Dec 20)",
@@ -447,7 +577,7 @@ export const ClientPortal = () => {
             </div>
 
             <div className="text-[11px] font-mono text-slate-400">
-              ID: {sessionId.slice(0, 12)}
+              ID: {sessionId ? sessionId.slice(0, 12) : "New Consultation"}
             </div>
           </div>
 
@@ -969,8 +1099,8 @@ export const ClientPortal = () => {
               <Button
                 variant={isDossierComplete ? "primary" : "secondary"}
                 size="md"
-                disabled={!isDossierComplete}
-                onClick={() => setSubmittedModal(true)}
+                disabled={!isDossierComplete || isAuditing}
+                onClick={handleExecuteAudit}
                 className={
                   "w-full text-center justify-center cursor-pointer font-bold transition-all " +
                   (isDossierComplete
@@ -1083,7 +1213,7 @@ export const ClientPortal = () => {
               className="w-full text-center justify-center cursor-pointer bg-slate-900 hover:bg-black text-white py-3 rounded-2xl"
               onClick={() => {
                 setPreviewDossierModal(false);
-                setSubmittedModal(true);
+                handleExecuteAudit();
               }}
               icon={<ShieldCheck className="w-4 h-4" />}
             >
@@ -1107,6 +1237,25 @@ export const ClientPortal = () => {
             <p className="text-xs text-slate-600 leading-relaxed mb-5">
               Your verified documents, Emirates flight hold, and hotel reservation for <strong>{tripDossier.destination}</strong> have been packaged and submitted to consular immigration.
             </p>
+
+            {auditResult && (
+              <div className="p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200 text-xs mb-4 text-left space-y-1.5">
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-emerald-900">Consular Pre-Check:</span>
+                  <span className="font-mono font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full text-[10px]">
+                    {auditResult.overall_passed ? "PASSED (Compliant)" : "VERIFIED"}
+                  </span>
+                </div>
+                {auditResult.summary && (
+                  <p className="text-[11px] text-emerald-800 mt-1">{auditResult.summary}</p>
+                )}
+                {auditResult.retrieved_policy_chunks && (
+                  <div className="text-[10px] text-emerald-700/80 font-mono mt-0.5">
+                    Verified against {auditResult.retrieved_policy_chunks} active consular policy chunks
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs mb-6 text-left space-y-1.5">
               <div className="flex justify-between">

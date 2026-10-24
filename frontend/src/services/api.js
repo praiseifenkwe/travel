@@ -1,66 +1,88 @@
-﻿import axios from "axios";
+import axios from "axios";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "";
+// Deployed backend base URL from environment or fallback
+const API_BASE_URL = import.meta.env.VITE_API_URL || "https://travel-backend-rosy-rho.vercel.app";
 
 export const apiClient = axios.create({
   baseURL: `${API_BASE_URL}/api`,
+  withCredentials: true, // Enables cookie transport across requests
   headers: {
     "Content-Type": "application/json",
   },
-  timeout: 15000,
+  timeout: 30000,
 });
 
+// Helper for extracting clean, user-friendly error messages from backend responses
+export const formatApiError = (err) => {
+  if (!err) return "An unexpected error occurred.";
+  if (err.response) {
+    const { status, data } = err.response;
+    if (status === 401) return "Session missing or expired. Please sign in again.";
+    if (status === 403) return "Request origin or permission not allowed.";
+    if (status === 404) return data?.detail || "Requested resource was not found.";
+    if (status === 409) return data?.detail || "An account with this email is already registered.";
+    if (status === 422) {
+      if (Array.isArray(data?.detail)) {
+        return data.detail.map((d) => `${d.loc?.slice(-1)[0] || "Field"}: ${d.msg}`).join(", ");
+      }
+      return data?.detail || "Validation failed. Password must be 12–128 characters.";
+    }
+    if (status === 503) return "The AI consular service is temporarily unavailable. Please retry shortly.";
+    return data?.detail || `Server error (${status})`;
+  }
+  return err.message || "Network error communicating with TravelForge backend.";
+};
+
 export const apiService = {
-  // 1. Conversational Chat & Intent (ChromaDB RAG + Dual-LLM Gateway)
+  // 1. Cookie Authentication (HttpOnly Session)
+  auth: {
+    signup: async ({ email, name, password }) => {
+      const res = await apiClient.post("/auth/signup", { email, name, password });
+      return res.data;
+    },
+    login: async ({ email, password }) => {
+      const res = await apiClient.post("/auth/login", { email, password });
+      return res.data;
+    },
+    me: async () => {
+      const res = await apiClient.get("/auth/me");
+      return res.data;
+    },
+    logout: async () => {
+      const res = await apiClient.post("/auth/logout");
+      return res.data;
+    },
+  },
+
+  // 2. Chat & Persisted Conversation History
   chat: {
     sendMessage: async (message, sessionId = null) => {
-      try {
-        const res = await apiClient.post("/chat", {
-          message,
-          session_id: sessionId,
-        });
-        return res.data;
-      } catch (err) {
-        console.warn("Backend /api/chat unreachable, using local fallback:", err.message);
-        // Resilient fallback when backend dev server is warming up
-        return {
-          session_id: sessionId || "local-fallback",
-          reply: null,
-          sources: ["Wakanow Knowledge Base (Cached)"],
-          extracted_intent: {},
-          stage: "intake",
-          fallback: true,
-        };
+      const payload = { message };
+      if (sessionId) {
+        payload.session_id = sessionId;
       }
+      const res = await apiClient.post("/chat", payload);
+      return res.data;
+    },
+    getHistory: async (sessionId) => {
+      const res = await apiClient.get(`/chat/${sessionId}/messages`);
+      return res.data;
     },
   },
 
-  // 2. Compliance Audit Engine (Evaluates applicant profile against ingested policies)
+  // 3. Compliance Audit Engine
   audit: {
     evaluate: async (sessionId, applicantProfile, visaType) => {
-      try {
-        const res = await apiClient.post("/audit", {
-          session_id: sessionId,
-          applicant_profile: applicantProfile,
-          visa_type: visaType,
-        });
-        return res.data;
-      } catch (err) {
-        console.warn("Backend /api/audit unreachable:", err.message);
-        return {
-          session_id: sessionId,
-          visa_type: visaType,
-          overall_passed: true,
-          issues: [],
-          summary: "Pre-checked against standard consular guidelines.",
-          retrieved_policy_chunks: 3,
-          fallback: true,
-        };
-      }
+      const res = await apiClient.post("/audit", {
+        session_id: sessionId,
+        applicant_profile: applicantProfile,
+        visa_type: visaType,
+      });
+      return res.data;
     },
   },
 
-  // 3. Dynamic RAG Checklist
+  // 4. Dynamic RAG Checklist
   checklist: {
     get: async (visaType, sessionId = "anonymous") => {
       try {
@@ -85,7 +107,7 @@ export const apiService = {
     },
   },
 
-  // 4. Human-In-The-Loop Rules Engine (Agency Desk)
+  // 5. Human-In-The-Loop Rules Engine (Agency Desk)
   rules: {
     getDrafts: async () => {
       try {
@@ -120,7 +142,7 @@ export const apiService = {
     },
   },
 
-  // 5. Knowledge & Vector Store Stats
+  // 6. Knowledge & Vector Store Stats
   knowledge: {
     getStats: async () => {
       try {
@@ -132,7 +154,7 @@ export const apiService = {
     },
   },
 
-  // 6. System Health Check
+  // 7. System Health Check
   health: {
     check: async () => {
       try {
