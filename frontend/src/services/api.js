@@ -39,8 +39,12 @@ export const formatApiError = (err) => {
 export const apiService = {
   // 1. Authentication
   auth: {
+    signup: async (credentials) => {
+      const res = await apiClient.post("/auth/signup", credentials);
+      return res.data;
+    },
     register: async (credentials) => {
-      const res = await apiClient.post("/auth/register", credentials);
+      const res = await apiClient.post("/auth/signup", credentials);
       return res.data;
     },
     login: async (credentials) => {
