@@ -34,7 +34,9 @@ import {
   CreditCard,
   Award,
   Lock,
-  ExternalLink
+  ExternalLink,
+  MessageSquare,
+  Briefcase
 } from "lucide-react";
 import { Button } from "../components/shared/Button";
 import { Link } from "react-router-dom";
@@ -55,6 +57,9 @@ export const ClientPortal = () => {
   const [sessionId, setSessionId] = useState(() => localStorage.getItem(storageKey) || null);
   const [applicationId, setApplicationId] = useState(() => localStorage.getItem(appStorageKey) || null);
   
+  // Mobile View Switcher: "chat" or "dossier"
+  const [mobileTab, setMobileTab] = useState("chat");
+
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [isUploadingDoc, setIsUploadingDoc] = useState(false);
@@ -63,7 +68,7 @@ export const ClientPortal = () => {
   const chatEndRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // Live Dossier State
+  // Live Comprehensive Travel & Consular Dossier
   const [tripDossier, setTripDossier] = useState({
     destination: "London, United Kingdom",
     countryCode: "GB",
@@ -98,13 +103,13 @@ export const ClientPortal = () => {
       gwfRef: "",
     },
     visaDecision: {
-      status: "pending", // pending, approved
+      status: "pending",
       vignetteNumber: "",
       validFrom: "",
       validTo: "",
     },
     flight: {
-      status: "pending", // pending, held, paid
+      status: "pending",
       airline: "",
       flightNo: "",
       pnr: "",
@@ -112,7 +117,7 @@ export const ClientPortal = () => {
       amountNgn: 1850000,
     },
     hotel: {
-      status: "pending", // pending, paid
+      status: "pending",
       name: "",
       location: "",
       voucherRef: "",
@@ -155,7 +160,6 @@ Where would you like to travel, or would you like to start by inspecting your pa
     if (!file) return;
     setFileError(null);
 
-    // Validate format: PDF, PNG, JPG, JPEG, WEBP
     const allowedTypes = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
     const allowedExtensions = [".pdf", ".jpg", ".jpeg", ".png", ".webp"];
     const fileExt = "." + file.name.split(".").pop().toLowerCase();
@@ -176,7 +180,6 @@ The uploaded file **"${file.name}"** is not in an accepted consular format. Plea
       return;
     }
 
-    // Validate size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
       setFileError(`File "${file.name}" exceeds 10MB limit.`);
       setMessages((prev) => [
@@ -195,7 +198,6 @@ The uploaded file **"${file.name}"** is not in an accepted consular format. Plea
 
     setIsUploadingDoc(true);
 
-    // Add user upload message in stream
     setMessages((prev) => [
       ...prev,
       {
@@ -212,11 +214,9 @@ The uploaded file **"${file.name}"** is not in an accepted consular format. Plea
       setIsUploadingDoc(false);
       const lowerName = file.name.toLowerCase();
 
-      // Detect if bank statement
       if (lowerName.includes("statement") || lowerName.includes("bank") || lowerName.includes("account") || lowerName.includes("funds")) {
         triggerBankStatementVerification();
       } else {
-        // Default to passport / bio-page
         triggerPassportVerification(file.name);
       }
     }, 1000);
@@ -626,7 +626,7 @@ You are 100% travel ready!`,
   const readinessScore = calculateReadiness();
 
   return (
-    <div className="flex h-[calc(100vh-64px)] overflow-hidden bg-slate-50">
+    <div className="flex flex-col h-[calc(100dvh-4.25rem)] sm:h-[calc(100dvh-4.75rem)] overflow-hidden bg-slate-100/70">
       {/* Hidden File Picker */}
       <input
         type="file"
@@ -636,469 +636,517 @@ You are 100% travel ready!`,
         className="hidden"
       />
 
-      {/* Main Conversational Workspace */}
-      <div className="flex-1 flex flex-col h-full bg-white border-r border-slate-200">
-        {/* Workspace Header */}
-        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-white z-10 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-brand-50 border border-brand-100 flex items-center justify-center text-brand-600">
-              <Bot className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-sm font-bold text-slate-900">AI Consular Intake Concierge</h1>
-                <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                  Autonomous Agent Active
-                </span>
-              </div>
-              <p className="text-xs text-slate-500">Autonomous passport checks, 6-month bank audits, and Paystack settlement</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="px-3 py-1.5 rounded-xl border border-slate-200 hover:border-brand-500 text-xs font-semibold text-slate-700 hover:text-brand-600 flex items-center gap-1.5 transition-all shadow-subtle cursor-pointer"
-            >
-              <UploadCloud className="w-3.5 h-3.5 text-brand-500" />
-              <span>Upload Document</span>
-            </button>
-            <button
-              onClick={() => setPreviewDossierModal(true)}
-              className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-xs font-semibold text-white flex items-center gap-1.5 transition-all shadow-subtle cursor-pointer"
-            >
-              <Eye className="w-3.5 h-3.5" />
-              <span>View Dossier ({readinessScore}%)</span>
-            </button>
-          </div>
-        </div>
-
-        {/* File Format Error Banner if any */}
-        {fileError && (
-          <div className="bg-rose-50 border-b border-rose-200 px-6 py-2.5 flex items-center justify-between text-xs text-rose-800">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-              <span>{fileError}</span>
-            </div>
-            <button onClick={() => setFileError(null)} className="text-rose-500 hover:text-rose-700">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        )}
-
-        {/* Conversation Stream */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {messages.map((msg) => (
-            <div key={msg.id} className={`flex gap-3.5 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-              {msg.role === "assistant" && (
-                <div className="w-8 h-8 rounded-full bg-brand-600 text-white flex items-center justify-center shrink-0 text-xs font-bold shadow-subtle">
-                  TF
-                </div>
-              )}
-
-              <div className={`max-w-2xl ${msg.role === "user" ? "items-end" : "items-start"} space-y-3`}>
-                {/* Bubble Text */}
-                {msg.text && (
-                  <div
-                    className={`p-4 rounded-2xl text-sm leading-relaxed shadow-subtle ${
-                      msg.role === "user"
-                        ? "bg-brand-600 text-white rounded-tr-xs"
-                        : "bg-slate-50 border border-slate-200/80 text-slate-800 rounded-tl-xs whitespace-pre-line"
-                    }`}
-                  >
-                    {msg.text}
-                  </div>
-                )}
-
-                {/* File Upload Attachment Preview */}
-                {msg.type === "file_upload" && (
-                  <div className="flex items-center gap-2.5 p-3 rounded-xl bg-brand-50 border border-brand-200 text-xs text-brand-900">
-                    <FileText className="w-4 h-4 text-brand-600" />
-                    <div>
-                      <div className="font-bold">{msg.fileName}</div>
-                      <div className="text-[10px] text-brand-600">{msg.fileSize} • Validated Format</div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Interactive Option Pills */}
-                {msg.options && (
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    {msg.options.map((opt, i) => (
-                      <button
-                        key={i}
-                        onClick={() => handleSend(opt)}
-                        className="text-xs px-3.5 py-1.5 rounded-full bg-white border border-slate-200 text-slate-700 hover:border-brand-500 hover:text-brand-600 hover:bg-brand-50/50 font-medium transition-all shadow-subtle cursor-pointer"
-                      >
-                        {opt}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* Rich Component: Visa Comparison Card */}
-                {msg.type === "visa_comparison_card" && (
-                  <VisaComparisonCard
-                    onSelectVisa={(visa) => {
-                      setTripDossier((prev) => ({
-                        ...prev,
-                        visaType: visa.name,
-                        visaCategory: visa.id,
-                        consularFee: `£${visa.fee_gbp} (₦${(visa.fee_gbp * 2100).toLocaleString()})`
-                      }));
-                      handleSend(`I would like to apply for the ${visa.name}. Please analyze my bank statement for compliance.`);
-                    }}
-                  />
-                )}
-
-                {/* Rich Component: Bank Statement Card */}
-                {msg.type === "bank_statement_card" && (
-                  <BankStatementCard
-                    onProceedToPayment={() => {
-                      handlePayVisaFee();
-                    }}
-                  />
-                )}
-
-                {/* Prompt: Pay Visa Fee Button */}
-                {msg.type === "pay_visa_fee_prompt" && (
-                  <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200 flex items-center justify-between gap-4">
-                    <div>
-                      <div className="text-xs font-bold text-emerald-900">UKVI Visa Application Fee</div>
-                      <div className="text-xs text-emerald-700">Official visa fee + biometrics processing: ₦380,000</div>
-                    </div>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={handlePayVisaFee}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
-                    >
-                      Pay ₦380,000 via Paystack →
-                    </Button>
-                  </div>
-                )}
-
-                {/* Rich Component: Appointment Booking Card */}
-                {msg.type === "appointment_booking" && (
-                  <AppointmentCard
-                    onAppointmentBooked={(booking) => {
-                      setTripDossier((prev) => ({
-                        ...prev,
-                        appointment: {
-                          status: "confirmed",
-                          center: booking.center,
-                          date: booking.date,
-                          time: booking.time,
-                          gwfRef: booking.gwf_number
-                        }
-                      }));
-
-                      setMessages((prev) => [
-                        ...prev,
-                        {
-                          id: Date.now(),
-                          role: "assistant",
-                          text: `📅 **VFS Global Appointment Locked & Dispatched!**
-
-• Center: **${booking.center}**
-• Date & Time: **${booking.date} at ${booking.time}**
-• GWF Reference: **${booking.gwf_number}**
-• Confirmation Email: **Dispatched to ${user?.email || "tunde.adeyemi@example.com"}** ✓
-
-Fast-forwarding to consular review: Your application has been reviewed and adjudicated...`,
-                          type: "visa_approved"
-                        }
-                      ]);
-                    }}
-                  />
-                )}
-
-                {/* Rich Component: Visa Approval Card */}
-                {msg.type === "visa_approved" && (
-                  <VisaApprovalCard
-                    onProceedToTravel={() => {
-                      handleSend("I would like to view direct flights from Lagos to London with 2x23kg checked bags.");
-                    }}
-                  />
-                )}
-
-                {/* Rich Component: Flight Selection Cards */}
-                {msg.type === "flight_selection" && (
-                  <FlightCards
-                    flights={[
-                      {
-                        id: "fl-ba-074",
-                        airline: "British Airways",
-                        flight_no: "BA-074",
-                        origin_code: "LOS",
-                        destination_code: "LHR",
-                        route: "Lagos (LOS) → London Heathrow (LHR)",
-                        departure: "2026-11-14T22:50:00",
-                        departure_date: "14 Nov 2026",
-                        baggage: "2 × 23kg Checked Bags + 1 Cabin",
-                        price_ngn: 1850000,
-                        price_formatted: "₦1,850,000",
-                        cabin: "Economy Direct"
-                      },
-                      {
-                        id: "fl-vs-412",
-                        airline: "Virgin Atlantic",
-                        flight_no: "VS-412",
-                        origin_code: "LOS",
-                        destination_code: "LHR",
-                        route: "Lagos (LOS) → London Heathrow (LHR)",
-                        departure: "2026-11-15T09:40:00",
-                        departure_date: "15 Nov 2026",
-                        baggage: "2 × 23kg Checked Bags + 1 Cabin",
-                        price_ngn: 1920000,
-                        price_formatted: "₦1,920,000",
-                        cabin: "Economy Classic Direct"
-                      }
-                    ]}
-                    onHoldFlight={(flight) => {
-                      handlePayFlight(flight);
-                    }}
-                  />
-                )}
-
-                {/* Rich Component: Hotel Selection Cards */}
-                {msg.type === "hotel_selection" && (
-                  <HotelCards
-                    hotels={[
-                      {
-                        id: "ht-westminster-bridge",
-                        name: "Park Plaza Westminster Bridge",
-                        location: "London SE1 7UT, United Kingdom",
-                        price_formatted: "₦640,000 / 14 nights",
-                        rating: 4.8,
-                        amenities: ["Free High-Speed Wi-Fi", "Consular Proof-of-Stay Voucher", "Metro Access", "Full English Breakfast"],
-                        image_url: "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=600&q=80"
-                      },
-                      {
-                        id: "ht-citizenm-tower",
-                        name: "citizenM Tower of London",
-                        location: "Trinity Square, London EC3N 4DJ",
-                        price_formatted: "₦580,000 / 14 nights",
-                        rating: 4.9,
-                        amenities: ["Consular Booking Voucher", "Luggage Storage", "24/7 Concierge", "Free Wi-Fi"],
-                        image_url: "https://images.unsplash.com/photo-1582719508461-905c673771fd?auto=format&fit=crop&w=600&q=80"
-                      }
-                    ]}
-                    onSelectHotel={(hotel) => {
-                      handlePayHotel(hotel);
-                    }}
-                  />
-                )}
-              </div>
-            </div>
-          ))}
-
-          {/* Typing Indicator */}
-          {isTyping && (
-            <div className="flex gap-3 items-center text-xs text-slate-500 italic">
-              <div className="w-8 h-8 rounded-full bg-brand-50 border border-brand-100 text-brand-600 flex items-center justify-center">
-                <Bot className="w-4 h-4 animate-spin" />
-              </div>
-              <div className="flex items-center gap-1.5 p-3 rounded-2xl bg-slate-50 border border-slate-200/60">
-                <span className="w-2 h-2 rounded-full bg-brand-500 animate-bounce"></span>
-                <span className="w-2 h-2 rounded-full bg-brand-500 animate-bounce [animation-delay:0.2s]"></span>
-                <span className="w-2 h-2 rounded-full bg-brand-500 animate-bounce [animation-delay:0.4s]"></span>
-                <span className="text-xs text-slate-600 ml-1">Analyzing consular policies...</span>
-              </div>
-            </div>
-          )}
-
-          {/* Uploading Indicator */}
-          {isUploadingDoc && (
-            <div className="flex gap-3 items-center text-xs text-slate-500 italic">
-              <div className="w-8 h-8 rounded-full bg-brand-50 border border-brand-100 text-brand-600 flex items-center justify-center">
-                <UploadCloud className="w-4 h-4 animate-pulse" />
-              </div>
-              <div className="flex items-center gap-2 p-3 rounded-2xl bg-brand-50/50 border border-brand-100 text-brand-900">
-                <RefreshCw className="w-3.5 h-3.5 animate-spin text-brand-600" />
-                <span>Validating document format and running AI OCR extraction...</span>
-              </div>
-            </div>
-          )}
-
-          <div ref={chatEndRef} />
-        </div>
-
-        {/* Chat Input Bar */}
-        <div className="p-4 border-t border-slate-200 bg-white">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleSend();
-            }}
-            className="flex items-center gap-2"
+      {/* Mobile Responsive Segmented Switcher (Visible on < lg screens) */}
+      <div className="lg:hidden px-3 py-2 bg-white border-b border-slate-200/80 flex items-center justify-center shrink-0">
+        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-full border border-slate-200/60 w-full max-w-sm">
+          <button
+            onClick={() => setMobileTab("chat")}
+            className={`flex-1 py-1.5 rounded-full text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              mobileTab === "chat"
+                ? "bg-white text-slate-900 shadow-sm"
+                : "text-slate-500 hover:text-slate-900"
+            }`}
           >
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              title="Upload Passport or Bank Statement (PDF, JPG, PNG)"
-              className="p-2.5 rounded-xl border border-slate-200 hover:border-brand-500 text-slate-500 hover:text-brand-600 hover:bg-brand-50 transition-colors cursor-pointer"
-            >
-              <Paperclip className="w-5 h-5" />
-            </button>
-
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask visa questions, upload documents, or type 'Verify passport'..."
-              className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all text-slate-900"
-            />
-
-            <Button
-              type="submit"
-              disabled={!input.trim()}
-              variant="primary"
-              size="md"
-              className="px-4 py-2.5 rounded-xl"
-            >
-              <Send className="w-4 h-4" />
-            </Button>
-          </form>
-          <div className="flex items-center justify-between text-[11px] text-slate-400 mt-2 px-1">
-            <span>Supported formats: PDF, JPG, PNG, WEBP (Max 10MB)</span>
-            <span>Secured via Official Paystack Payment Gateway</span>
-          </div>
+            <MessageSquare className="w-3.5 h-3.5 text-brand-600" />
+            <span>Consular Chat</span>
+          </button>
+          <button
+            onClick={() => setMobileTab("dossier")}
+            className={`flex-1 py-1.5 rounded-full text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              mobileTab === "dossier"
+                ? "bg-white text-slate-900 shadow-sm"
+                : "text-slate-500 hover:text-slate-900"
+            }`}
+          >
+            <Briefcase className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Live Dossier ({readinessScore}%)</span>
+          </button>
         </div>
       </div>
 
-      {/* Right Sidebar: Active Travel Dossier */}
-      <div className="w-96 border-l border-slate-200 bg-slate-50/50 flex flex-col h-full overflow-y-auto p-5 space-y-5 hidden lg:flex">
-        {/* Readiness Meter */}
-        <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-card">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Travel Readiness</span>
-            <span className="text-sm font-black text-brand-600">{readinessScore}%</span>
-          </div>
-          <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-brand-600 rounded-full transition-all duration-700 ease-out"
-              style={{ width: `${readinessScore}%` }}
-            ></div>
-          </div>
-        </div>
+      {/* Main Workspace Body */}
+      <div className="flex-1 flex overflow-hidden max-w-[1600px] w-full mx-auto sm:px-4 sm:pb-3">
+        {/* Left: Conversational Stream Area */}
+        <div
+          className={`flex-1 flex flex-col h-full bg-white sm:rounded-3xl border border-slate-200/80 shadow-sleek overflow-hidden ${
+            mobileTab === "chat" ? "flex" : "hidden lg:flex"
+          }`}
+        >
+          {/* Conversational Header */}
+          <div className="px-4 sm:px-6 py-3.5 border-b border-slate-200/80 flex items-center justify-between bg-white/95 backdrop-blur-md z-10 shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-brand-600 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-brand-500/20 shrink-0">
+                <Bot className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-sm font-extrabold text-slate-900 tracking-tight">AI Consular Concierge</h1>
+                  <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Autonomous
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 hidden sm:block">Automated passport verification, bank statement audit, and Paystack settlement</p>
+              </div>
+            </div>
 
-        {/* 1. Passport Compliance Card */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-subtle space-y-2.5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-              <Fingerprint className="w-3.5 h-3.5 text-slate-500" />
-              Passport Validity
-            </span>
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-              tripDossier.passport.status === "verified"
-                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                : "bg-amber-50 text-amber-700 border border-amber-200"
-            }`}>
-              {tripDossier.passport.status === "verified" ? "Verified (60 Mos) ✓" : "Requires Check"}
-            </span>
-          </div>
-          <div className="text-xs text-slate-600 space-y-1">
-            <div className="flex justify-between">
-              <span className="text-slate-400">Holder:</span>
-              <span className="font-semibold text-slate-900">{tripDossier.passport.name}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Number:</span>
-              <span className="font-mono font-medium text-slate-900">{tripDossier.passport.number}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Expiry:</span>
-              <span className="font-medium text-slate-900">{tripDossier.passport.expiry}</span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 hover:border-brand-500 text-xs font-semibold text-slate-700 hover:text-brand-600 flex items-center gap-1.5 transition-all shadow-subtle cursor-pointer bg-slate-50/50 hover:bg-white"
+              >
+                <UploadCloud className="w-3.5 h-3.5 text-brand-600" />
+                <span className="hidden sm:inline">Upload Document</span>
+                <span className="sm:hidden">Upload</span>
+              </button>
+              <button
+                onClick={() => setPreviewDossierModal(true)}
+                className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-xs font-semibold text-white flex items-center gap-1.5 transition-all shadow-subtle cursor-pointer"
+              >
+                <Eye className="w-3.5 h-3.5 text-slate-300" />
+                <span className="hidden sm:inline">Dossier ({readinessScore}%)</span>
+                <span className="sm:hidden">{readinessScore}%</span>
+              </button>
             </div>
           </div>
-        </div>
 
-        {/* 2. Bank Statement & Funds Card */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-subtle space-y-2.5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-              <CreditCard className="w-3.5 h-3.5 text-slate-500" />
-              6-Month Bank Audit
-            </span>
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-              tripDossier.funds.status === "verified"
-                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                : "bg-slate-100 text-slate-600 border border-slate-200"
-            }`}>
-              {tripDossier.funds.status === "verified" ? "Sufficient (+232%) ✓" : "Pending Audit"}
-            </span>
-          </div>
-          <div className="text-xs text-slate-600 space-y-1">
-            <div className="flex justify-between">
-              <span className="text-slate-400">Average Balance:</span>
-              <span className="font-bold text-slate-900">₦8,850,000</span>
+          {/* File Format Error Banner if any */}
+          {fileError && (
+            <div className="bg-rose-50 border-b border-rose-200 px-4 sm:px-6 py-2.5 flex items-center justify-between text-xs text-rose-800 shrink-0">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>{fileError}</span>
+              </div>
+              <button onClick={() => setFileError(null)} className="text-rose-500 hover:text-rose-700 cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
             </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">UKVI Threshold:</span>
-              <span className="font-medium text-slate-900">£1,270 (₦2.66M)</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Surplus:</span>
-              <span className="font-bold text-emerald-700">+₦6,183,000</span>
-            </div>
-          </div>
-        </div>
+          )}
 
-        {/* 3. Visa Fee & Biometrics */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-subtle space-y-2.5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-slate-500" />
-              Visa Fee & VFS
-            </span>
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-              tripDossier.feePaid
-                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                : "bg-slate-100 text-slate-600"
-            }`}>
-              {tripDossier.feePaid ? "Paid via Paystack ✓" : "Unpaid"}
-            </span>
-          </div>
-          <div className="text-xs text-slate-600 space-y-1">
-            <div className="flex justify-between">
-              <span className="text-slate-400">Visa Type:</span>
-              <span className="font-medium text-slate-900">{tripDossier.visaType}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Fee Amount:</span>
-              <span className="font-bold text-slate-900">₦380,000</span>
-            </div>
-            {tripDossier.appointment.status === "confirmed" && (
-              <div className="flex justify-between border-t border-slate-100 pt-1">
-                <span className="text-slate-400">VFS Ref:</span>
-                <span className="font-mono font-bold text-emerald-700">{tripDossier.appointment.gwfRef}</span>
+          {/* Chat Messages Stream */}
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 bg-gradient-to-b from-slate-50/40 via-white to-slate-50/30">
+            {messages.map((msg) => (
+              <div key={msg.id} className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                {msg.role === "assistant" && (
+                  <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center shrink-0 text-xs font-extrabold shadow-sm">
+                    TF
+                  </div>
+                )}
+
+                <div className={`max-w-2xl w-full ${msg.role === "user" ? "items-end" : "items-start"} space-y-3`}>
+                  {/* Text Content */}
+                  {msg.text && (
+                    <div
+                      className={`p-4 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-subtle ${
+                        msg.role === "user"
+                          ? "bg-gradient-to-r from-brand-600 to-indigo-600 text-white rounded-tr-xs ml-auto max-w-lg"
+                          : "bg-white border border-slate-200/90 text-slate-800 rounded-tl-xs whitespace-pre-line"
+                      }`}
+                    >
+                      {msg.text}
+                    </div>
+                  )}
+
+                  {/* Upload Chip */}
+                  {msg.type === "file_upload" && (
+                    <div className="flex items-center gap-3 p-3 rounded-2xl bg-brand-50/80 border border-brand-200 text-xs text-brand-900 shadow-subtle max-w-md ml-auto">
+                      <div className="w-8 h-8 rounded-xl bg-brand-100 flex items-center justify-center text-brand-700 shrink-0">
+                        <FileText className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="font-extrabold text-slate-900">{msg.fileName}</div>
+                        <div className="text-[10px] text-brand-700 font-semibold">{msg.fileSize} • Validated Format ✓</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Quick Option Pills */}
+                  {msg.options && (
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {msg.options.map((opt, i) => (
+                        <button
+                          key={i}
+                          onClick={() => handleSend(opt)}
+                          className="text-xs px-3.5 py-1.5 rounded-full bg-white border border-slate-200 text-slate-700 hover:border-brand-500 hover:text-brand-600 hover:bg-brand-50/50 font-semibold transition-all shadow-subtle cursor-pointer"
+                        >
+                          {opt}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Dynamic Interactive Cards */}
+                  {msg.type === "visa_comparison_card" && (
+                    <VisaComparisonCard
+                      onSelectVisa={(visa) => {
+                        setTripDossier((prev) => ({
+                          ...prev,
+                          visaType: visa.name,
+                          visaCategory: visa.id,
+                          consularFee: `£${visa.fee_gbp} (₦${(visa.fee_gbp * 2100).toLocaleString()})`
+                        }));
+                        handleSend(`I would like to apply for the ${visa.name}. Please inspect my bank statement for compliance.`);
+                      }}
+                    />
+                  )}
+
+                  {msg.type === "bank_statement_card" && (
+                    <BankStatementCard
+                      onProceedToPayment={() => {
+                        handlePayVisaFee();
+                      }}
+                    />
+                  )}
+
+                  {msg.type === "pay_visa_fee_prompt" && (
+                    <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-subtle">
+                      <div>
+                        <div className="text-xs font-black text-emerald-950">UKVI Visa Application Fee</div>
+                        <div className="text-xs text-emerald-700">Official visa fee + biometrics processing: <strong>₦380,000</strong></div>
+                      </div>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={handlePayVisaFee}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0 py-2.5 px-4 font-bold rounded-xl"
+                      >
+                        Pay ₦380,000 via Paystack →
+                      </Button>
+                    </div>
+                  )}
+
+                  {msg.type === "appointment_booking" && (
+                    <AppointmentCard
+                      onAppointmentBooked={(booking) => {
+                        setTripDossier((prev) => ({
+                          ...prev,
+                          appointment: {
+                            status: "confirmed",
+                            center: booking.center,
+                            date: booking.date,
+                            time: booking.time,
+                            gwfRef: booking.gwf_number || booking.gwf_reference
+                          }
+                        }));
+
+                        setMessages((prev) => [
+                          ...prev,
+                          {
+                            id: Date.now(),
+                            role: "assistant",
+                            text: `📅 **VFS Global Appointment Locked & Dispatched!**
+
+• Center: **${booking.center}**
+• Date & Time: **${booking.date} at ${booking.time}**
+• GWF Reference: **${booking.gwf_number || booking.gwf_reference}**
+• Confirmation Email: **Dispatched to ${user?.email || "tunde.adeyemi@example.com"}** ✓
+
+Fast-forwarding to consular review: Your application has been reviewed and adjudicated...`,
+                            type: "visa_approved"
+                          }
+                        ]);
+                      }}
+                    />
+                  )}
+
+                  {msg.type === "visa_approved" && (
+                    <VisaApprovalCard
+                      onProceedToTravel={() => {
+                        handleSend("I would like to view direct flights from Lagos to London with 2x23kg checked bags.");
+                      }}
+                    />
+                  )}
+
+                  {msg.type === "flight_selection" && (
+                    <FlightCards
+                      flights={[
+                        {
+                          id: "fl-ba-074",
+                          airline: "British Airways",
+                          flight_no: "BA-074",
+                          origin_code: "LOS",
+                          destination_code: "LHR",
+                          route: "Lagos (LOS) → London Heathrow (LHR)",
+                          departure: "2026-11-14T22:50:00",
+                          departure_date: "14 Nov 2026",
+                          baggage: "2 × 23kg Checked Bags + 1 Cabin",
+                          price_ngn: 1850000,
+                          price_formatted: "₦1,850,000",
+                          cabin: "Economy Direct"
+                        },
+                        {
+                          id: "fl-vs-412",
+                          airline: "Virgin Atlantic",
+                          flight_no: "VS-412",
+                          origin_code: "LOS",
+                          destination_code: "LHR",
+                          route: "Lagos (LOS) → London Heathrow (LHR)",
+                          departure: "2026-11-15T09:40:00",
+                          departure_date: "15 Nov 2026",
+                          baggage: "2 × 23kg Checked Bags + 1 Cabin",
+                          price_ngn: 1920000,
+                          price_formatted: "₦1,920,000",
+                          cabin: "Economy Classic Direct"
+                        }
+                      ]}
+                      onHoldFlight={(flight) => {
+                        handlePayFlight(flight);
+                      }}
+                    />
+                  )}
+
+                  {msg.type === "hotel_selection" && (
+                    <HotelCards
+                      hotels={[
+                        {
+                          id: "ht-westminster-bridge",
+                          name: "Park Plaza Westminster Bridge",
+                          location: "London SE1 7UT, United Kingdom",
+                          price_formatted: "₦640,000 / 14 nights",
+                          rating: 4.8,
+                          amenities: ["Free High-Speed Wi-Fi", "Consular Proof-of-Stay Voucher", "Metro Access", "Full English Breakfast"],
+                          image_url: "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=600&q=80"
+                        },
+                        {
+                          id: "ht-citizenm-tower",
+                          name: "citizenM Tower of London",
+                          location: "Trinity Square, London EC3N 4DJ",
+                          price_formatted: "₦580,000 / 14 nights",
+                          rating: 4.9,
+                          amenities: ["Consular Booking Voucher", "Luggage Storage", "24/7 Concierge", "Free Wi-Fi"],
+                          image_url: "https://images.unsplash.com/photo-1582719508461-905c673771fd?auto=format&fit=crop&w=600&q=80"
+                        }
+                      ]}
+                      onSelectHotel={(hotel) => {
+                        handlePayHotel(hotel);
+                      }}
+                    />
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {/* Typing Indicator */}
+            {isTyping && (
+              <div className="flex gap-3 items-center text-xs text-slate-500 italic">
+                <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-bold shadow-sm">
+                  TF
+                </div>
+                <div className="flex items-center gap-1.5 p-3 rounded-2xl bg-white border border-slate-200/90 shadow-subtle">
+                  <span className="w-2 h-2 rounded-full bg-brand-500 animate-bounce"></span>
+                  <span className="w-2 h-2 rounded-full bg-brand-500 animate-bounce [animation-delay:0.2s]"></span>
+                  <span className="w-2 h-2 rounded-full bg-brand-500 animate-bounce [animation-delay:0.4s]"></span>
+                  <span className="text-xs text-slate-600 font-medium ml-1">Analyzing consular policies...</span>
+                </div>
               </div>
             )}
+
+            {/* Uploading Indicator */}
+            {isUploadingDoc && (
+              <div className="flex gap-3 items-center text-xs text-slate-500 italic">
+                <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-bold shadow-sm">
+                  TF
+                </div>
+                <div className="flex items-center gap-2 p-3 rounded-2xl bg-brand-50/80 border border-brand-200 text-brand-900 shadow-subtle">
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-brand-600" />
+                  <span className="font-medium">Validating document format and running OCR extraction...</span>
+                </div>
+              </div>
+            )}
+
+            <div ref={chatEndRef} />
+          </div>
+
+          {/* Bottom Chat Input Bar */}
+          <div className="p-3 sm:p-4 border-t border-slate-200/80 bg-white shrink-0">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSend();
+              }}
+              className="flex items-center gap-2"
+            >
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                title="Upload Passport or Bank Statement (PDF, JPG, PNG)"
+                className="p-2.5 rounded-xl border border-slate-200 hover:border-brand-500 text-slate-500 hover:text-brand-600 hover:bg-brand-50 transition-colors cursor-pointer shrink-0"
+              >
+                <Paperclip className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Ask visa questions, upload documents, or type 'Verify passport'..."
+                className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all text-slate-900 placeholder:text-slate-400"
+              />
+
+              <Button
+                type="submit"
+                disabled={!input.trim()}
+                variant="primary"
+                size="md"
+                className="px-3.5 sm:px-4 py-2.5 rounded-xl shrink-0"
+              >
+                <Send className="w-4 h-4" />
+              </Button>
+            </form>
+            <div className="flex flex-col sm:flex-row items-center justify-between text-[10px] sm:text-[11px] text-slate-400 mt-2 px-1 gap-1">
+              <span>Accepted Formats: PDF, JPG, PNG, WEBP (Max 10MB)</span>
+              <span className="flex items-center gap-1 font-medium text-slate-500">
+                <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                Live Paystack Payment Gateway
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* 4. Flight & Accommodation Status */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-subtle space-y-2.5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-              <Plane className="w-3.5 h-3.5 text-slate-500" />
-              Flights & Accommodation
-            </span>
+        {/* Right: Active Travel Dossier Sidebar */}
+        <div
+          className={`w-full lg:w-[380px] shrink-0 border-l lg:border-l-0 border-slate-200/80 lg:ml-3 bg-white sm:rounded-3xl border sm:border-slate-200/80 shadow-sleek flex-col h-full overflow-y-auto p-4 sm:p-5 space-y-4 ${
+            mobileTab === "dossier" ? "flex" : "hidden lg:flex"
+          }`}
+        >
+          {/* Dossier Header & Readiness Meter */}
+          <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-900 to-indigo-950 text-white shadow-md space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                <span className="text-xs font-bold tracking-tight">Consular Readiness</span>
+              </div>
+              <span className="text-sm font-black text-emerald-400 font-mono">{readinessScore}%</span>
+            </div>
+            <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-brand-400 to-emerald-400 rounded-full transition-all duration-700 ease-out"
+                style={{ width: `${readinessScore}%` }}
+              ></div>
+            </div>
+            <div className="text-[10px] text-slate-300 flex items-center justify-between">
+              <span>Applicant: <strong>{tripDossier.passport.name}</strong></span>
+              <span>{tripDossier.flag} {tripDossier.destination}</span>
+            </div>
           </div>
-          <div className="text-xs text-slate-600 space-y-1">
-            <div className="flex justify-between items-center">
-              <span className="text-slate-400">Flight PNR:</span>
-              <span className={`font-mono font-bold ${tripDossier.flight.status === "paid" ? "text-emerald-700" : "text-slate-400"}`}>
-                {tripDossier.flight.status === "paid" ? tripDossier.flight.pnr : "Not Booked"}
+
+          {/* 1. Passport Compliance Card */}
+          <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 shadow-subtle space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
+                <Fingerprint className="w-3.5 h-3.5 text-brand-600" />
+                Passport Compliance
+              </span>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                tripDossier.passport.status === "verified"
+                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                  : "bg-amber-50 text-amber-700 border border-amber-200"
+              }`}>
+                {tripDossier.passport.status === "verified" ? "Verified (60 Mos) ✓" : "Requires Check"}
               </span>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-slate-400">Hotel Voucher:</span>
-              <span className={`font-mono font-bold ${tripDossier.hotel.status === "paid" ? "text-emerald-700" : "text-slate-400"}`}>
-                {tripDossier.hotel.status === "paid" ? tripDossier.hotel.voucherRef : "Not Booked"}
+            <div className="text-xs text-slate-600 space-y-1">
+              <div className="flex justify-between">
+                <span className="text-slate-400">Passport Number:</span>
+                <span className="font-mono font-bold text-slate-900">{tripDossier.passport.number}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Expiration Date:</span>
+                <span className="font-medium text-slate-900">{tripDossier.passport.expiry}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Statutory 6-Month Rule:</span>
+                <span className="font-bold text-emerald-700">Satisfied (5+ Years Remaining)</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 2. Bank Statement & Funds Card */}
+          <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 shadow-subtle space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
+                <Building2 className="w-3.5 h-3.5 text-amber-600" />
+                6-Month Financial Audit
               </span>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                tripDossier.funds.status === "verified"
+                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                  : "bg-slate-200 text-slate-600"
+              }`}>
+                {tripDossier.funds.status === "verified" ? "Verified Sufficient ✓" : "Pending Audit"}
+              </span>
+            </div>
+            <div className="text-xs text-slate-600 space-y-1">
+              <div className="flex justify-between">
+                <span className="text-slate-400">Calculated Average:</span>
+                <span className="font-mono font-black text-slate-900">₦8,850,000.00</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">UKVI Requirement:</span>
+                <span className="font-medium text-slate-900">£1,270 (~₦2.66M)</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Safety Surplus:</span>
+                <span className="font-bold text-emerald-700">+₦6,183,000 (+232%)</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 3. Visa Fee & Appointment Card */}
+          <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 shadow-subtle space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
+                <CreditCard className="w-3.5 h-3.5 text-indigo-600" />
+                Visa Fee & Biometrics
+              </span>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                tripDossier.feePaid
+                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                  : "bg-amber-50 text-amber-700 border border-amber-200"
+              }`}>
+                {tripDossier.feePaid ? "Paid via Paystack ✓" : "₦380,000 Due"}
+              </span>
+            </div>
+            <div className="text-xs text-slate-600 space-y-1">
+              <div className="flex justify-between">
+                <span className="text-slate-400">Selected Route:</span>
+                <span className="font-bold text-slate-900 truncate max-w-[180px]">{tripDossier.visaType}</span>
+              </div>
+              {tripDossier.appointment.status === "confirmed" ? (
+                <div className="flex justify-between border-t border-slate-200/60 pt-1">
+                  <span className="text-slate-400">VFS GWF Ref:</span>
+                  <span className="font-mono font-bold text-emerald-700">{tripDossier.appointment.gwfRef}</span>
+                </div>
+              ) : (
+                <div className="flex justify-between">
+                  <span className="text-slate-400">VFS Biometrics:</span>
+                  <span className="text-amber-700 font-semibold">Slot Pending</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 4. Flight & Accommodation Card */}
+          <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 shadow-subtle space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
+                <Plane className="w-3.5 h-3.5 text-emerald-600" />
+                Flight & Hotel Vouchers
+              </span>
+            </div>
+            <div className="text-xs text-slate-600 space-y-1">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">Flight PNR:</span>
+                <span className={`font-mono font-bold ${tripDossier.flight.status === "paid" ? "text-emerald-700" : "text-slate-400"}`}>
+                  {tripDossier.flight.status === "paid" ? tripDossier.flight.pnr : "Not Booked"}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">Consular Hotel:</span>
+                <span className={`font-mono font-bold ${tripDossier.hotel.status === "paid" ? "text-emerald-700" : "text-slate-400"}`}>
+                  {tripDossier.hotel.status === "paid" ? tripDossier.hotel.voucherRef : "Not Booked"}
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -1106,8 +1154,8 @@ Fast-forwarding to consular review: Your application has been reviewed and adjud
 
       {/* Full Dossier Preview Modal */}
       {previewDossierModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-dropdown max-w-lg w-full p-6 relative">
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-dropdown max-w-lg w-full p-6 relative animate-in fade-in zoom-in-95">
             <button
               onClick={() => setPreviewDossierModal(false)}
               className="absolute top-5 right-5 p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
@@ -1115,11 +1163,11 @@ Fast-forwarding to consular review: Your application has been reviewed and adjud
               <X className="w-5 h-5" />
             </button>
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center shadow-subtle">
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-slate-900">Consular Clearance Dossier</h3>
+                <h3 className="text-base font-extrabold text-slate-900">Consular Clearance Dossier</h3>
                 <p className="text-xs text-slate-500">Applicant: Tunde Babatunde Adeyemi</p>
               </div>
             </div>
