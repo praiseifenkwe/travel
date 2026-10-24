@@ -190,6 +190,32 @@ export const apiService = {
       const res = await apiClient.get("/travel/summary");
       return res.data;
     },
+    getExchangeRates: async () => {
+      const res = await apiClient.get("/travel/exchange-rates");
+      return res.data;
+    },
+    initPaystack: async ({ amount_ngn, purpose, applicant_name, email, metadata = {} }) => {
+      const res = await apiClient.post("/travel/payments/paystack/initialize", {
+        amount_ngn,
+        purpose,
+        applicant_name,
+        email,
+        metadata,
+      });
+      return res.data;
+    },
+    verifyPaystack: async (reference) => {
+      const res = await apiClient.post("/travel/payments/paystack/verify", { reference });
+      return res.data;
+    },
+    bookAppointment: async (payload) => {
+      const res = await apiClient.post("/travel/appointments/book", payload);
+      return res.data;
+    },
+    analyzeBankStatement: async (payload = {}) => {
+      const res = await apiClient.post("/travel/bank-statement/analyze", payload);
+      return res.data;
+    },
   },
 
   // 8. Human-In-The-Loop Rules Engine (Staff / Agency Desk)

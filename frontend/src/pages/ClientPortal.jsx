@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { 
   Plane, 
   Send, 
@@ -29,12 +29,24 @@ import {
   ArrowUpRight,
   Fingerprint,
   QrCode,
-  Ticket
+  Ticket,
+  Building2,
+  CreditCard,
+  Award
 } from "lucide-react";
 import { Button } from "../components/shared/Button";
 import { Link } from "react-router-dom";
 import { apiService, formatApiError } from "../services/api";
 import { useAuth } from "../context/AuthContext";
+
+import { PaystackModal } from "../components/shared/PaystackModal";
+import { DemoFlowBar } from "../components/shared/DemoFlowBar";
+import { BankStatementCard } from "../components/chat/BankStatementCard";
+import { VisaComparisonCard } from "../components/chat/VisaComparisonCard";
+import { AppointmentCard } from "../components/chat/AppointmentCard";
+import { VisaApprovalCard } from "../components/chat/VisaApprovalCard";
+import { HotelCards } from "../components/accommodations/HotelCards";
+import { FlightCards } from "../components/flights/FlightCards";
 
 export const ClientPortal = () => {
   const { user, openAuthModal } = useAuth();
@@ -42,93 +54,50 @@ export const ClientPortal = () => {
   const appStorageKey = user ? `travelforge_app_${user.id}` : "travelforge_app_guest";
   const [sessionId, setSessionId] = useState(() => localStorage.getItem(storageKey) || null);
   const [applicationId, setApplicationId] = useState(() => localStorage.getItem(appStorageKey) || null);
-  const [auditResult, setAuditResult] = useState(null);
-  const [isAuditing, setIsAuditing] = useState(false);
-  const [isUploadingDoc, setIsUploadingDoc] = useState(false);
+  const [activeStep, setActiveStep] = useState(1);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [scanningPassport, setScanningPassport] = useState(false);
-  const [submittedModal, setSubmittedModal] = useState(false);
-  const [previewDossierModal, setPreviewDossierModal] = useState(false);
+
+  // Paystack Modal State
+  const [paystackOpen, setPaystackOpen] = useState(false);
+  const [paystackAmount, setPaystackAmount] = useState(380000);
+  const [paystackPurpose, setPaystackPurpose] = useState("visa_fee");
+  const [paystackTitle, setPaystackTitle] = useState("UK Standard Visitor Visa Fee");
+  const [paystackCallback, setPaystackCallback] = useState(null);
+
   const chatEndRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // Ensure active application dossier and restore saved messages
-  useEffect(() => {
-    const key = user ? `travelforge_session_${user.id}` : "travelforge_session_guest";
-    const appKey = user ? `travelforge_app_${user.id}` : "travelforge_app_guest";
-    const savedSession = localStorage.getItem(key);
-    const savedApp = localStorage.getItem(appKey);
-
-    if (savedSession) {
-      setSessionId(savedSession);
-      if (user) {
-        apiService.chat.getHistory(savedSession)
-          .then((history) => {
-            if (Array.isArray(history) && history.length > 0) {
-              const formatted = history.map((item, idx) => ({
-                id: item.created_at ? new Date(item.created_at).getTime() + idx : Date.now() + idx,
-                role: item.role,
-                text: item.content,
-                type: "text",
-              }));
-              setMessages(formatted);
-            }
-          })
-          .catch((err) => {
-            if (err.response?.status === 404 || err.response?.status === 401) {
-              localStorage.removeItem(key);
-              setSessionId(null);
-            }
-          });
-      }
-    } else {
-      setSessionId(null);
-    }
-
-    // Initialize or load application dossier for authenticated user
-    if (user) {
-      apiService.applications.list()
-        .then((apps) => {
-          if (Array.isArray(apps) && apps.length > 0) {
-            const activeApp = apps[0];
-            setApplicationId(activeApp.id);
-            localStorage.setItem(appKey, activeApp.id);
-          } else {
-            return apiService.applications.create({
-              visa_type: "uk_standard_visitor",
-              destination: "United Kingdom",
-              applicant_data: { purpose: "Tourism" }
-            }).then((created) => {
-              setApplicationId(created.id);
-              localStorage.setItem(appKey, created.id);
-            });
-          }
-        })
-        .catch((err) => {
-          console.warn("Application load error:", err.message);
-        });
-    } else {
-      setApplicationId(null);
-    }
-  }, [user]);
-
-  // Live Trip State (Synthesized on the fly by the AI Concierge)
+  // Live Trip Dossier State
   const [tripDossier, setTripDossier] = useState({
-    destination: "Dubai, United Arab Emirates",
-    countryCode: "AE",
-    flag: "🇦🇪",
-    dates: "20 Dec – 28 Dec 2026",
+    destination: "London, United Kingdom",
+    countryCode: "GB",
+    flag: "🇬🇧",
+    dates: "14 Nov – 28 Nov 2026",
     purpose: "Holiday & Tourism",
-    visaType: "30-Day Tourist e-Visa",
-    processingTime: "3 to 4 Business Days",
-    consularFee: "₦180,000 (~$120)",
+    visaType: "UK Standard Visitor Visa",
+    processingTime: "3 to 4 Business Weeks",
+    consularFeeGbp: 115,
+    consularFeeNgn: 241500,
     passport: {
       status: "pending",
       name: "",
       number: "",
       expiry: "",
-      nationality: ""
+      nationality: "Nigerian"
+    },
+    bankStatement: {
+      status: "pending",
+      averageBalanceNgn: 8550000,
+      meetsThreshold: true
+    },
+    appointment: {
+      status: "pending",
+      center: "",
+      date: "",
+      time: "",
+      gwfRef: ""
     },
     flight: {
       status: "pending",
@@ -153,14 +122,12 @@ export const ClientPortal = () => {
     {
       id: 1,
       role: "assistant",
-      text: "Hello Tunde. Welcome to your travel intake workspace.\n\nI will assemble your consular dossier, verify passport compliance, and reserve direct flights on the fly — zero paperwork or form-filling required.\n\nWhere would you like to travel next?",
-      type: "text",
-      options: [
-        "🇦🇪 Dubai Vacation (Dec 20)",
-        "🇬🇧 London Holiday (Nov 14)",
-        "🇫🇷 Paris City Break (Jan 10)",
-        "🇰🇪 Kenya Safari (Dec 05)"
-      ]
+      text: `Hello Tunde. Welcome to your TravelForge consular intake workspace.
+
+I will guide you step-by-step through obtaining your visa, verifying your 6-month bank statement, booking your VFS biometrics, and locking your flights and hotels with zero manual forms.
+
+Let us begin with Step 1: Let us inspect your international passport to confirm validity of 6+ months.`,
+      type: "step1_passport"
     }
   ]);
 
@@ -172,335 +139,9 @@ export const ClientPortal = () => {
     scrollToBottom();
   }, [messages, isTyping, scanningPassport]);
 
-﻿  // Handle Message Submission
-  const handleSend = async (textToSend) => {
-    const text = textToSend || input;
-    if (!text.trim()) return;
-
-    // Add user message to conversation
-    const userMsg = { id: Date.now(), role: "user", text };
-    setMessages((prev) => [...prev, userMsg]);
-    setInput("");
-    setIsTyping(true);
-
-    const lower = text.toLowerCase();
-
-    // Enforce authentication before starting consular intake
-    if (!user) {
-      setIsTyping(false);
-      openAuthModal("login");
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now() + 1,
-          role: "assistant",
-          text: "Please sign in or create an account with TravelForge to start your consular intake consultation. Your conversation history and verified travel dossier will be safely linked to your account.",
-          type: "text",
-        },
-      ]);
-      return;
-    }
-
-    // 1. First attempt to query the real backend RAG service
-    try {
-      const backendRes = await apiService.chat.sendMessage(text, sessionId || undefined, applicationId || undefined);
-      if (backendRes && backendRes.reply) {
-        setIsTyping(false);
-        if (backendRes.session_id) {
-          setSessionId(backendRes.session_id);
-          localStorage.setItem(storageKey, backendRes.session_id);
-        }
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: Date.now() + 1,
-            role: "assistant",
-            text: backendRes.reply,
-            sources: backendRes.sources || [],
-            stage: backendRes.stage || "intake",
-            type: "text",
-          },
-        ]);
-        return;
-      }
-    } catch (e) {
-      console.warn("Backend chat error:", e.message);
-      if (e.response?.status === 401) {
-        setIsTyping(false);
-        openAuthModal("login");
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: Date.now() + 1,
-            role: "assistant",
-            text: "Your session has expired. Please sign in again to continue chatting and retain your travel dossier.",
-            type: "text",
-          },
-        ]);
-        return;
-      }
-      if (e.response?.status === 503) {
-        setIsTyping(false);
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: Date.now() + 1,
-            role: "assistant",
-            text: "The AI Consular service is temporarily busy. Please retry in a few moments.",
-            type: "text",
-          },
-        ]);
-        return;
-      }
-      if (e.response?.status === 404) {
-        localStorage.removeItem(storageKey);
-        setSessionId(null);
-      }
-    }
-
-    // 2. High-Fidelity Conversational Engine
-    setTimeout(() => {
-      setIsTyping(false);
-
-      if (lower.includes("dubai") || lower.includes("uae") || lower.includes("december")) {
-        setTripDossier((prev) => ({
-          ...prev,
-          destination: "Dubai, United Arab Emirates",
-          flag: "🇦🇪",
-          countryCode: "AE",
-          dates: "20 Dec – 28 Dec 2026",
-          visaType: "30-Day Tourist e-Visa",
-          consularFee: "₦180,000 (~$120)",
-        }));
-
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: Date.now() + 1,
-            role: "assistant",
-            text: "Dubai in December is exceptional. ☀️\n\nFor Nigerian passport holders, the UAE operates the 30-Day Tourist e-Visa (100% online with 3–5 day issuance).\n\nTo assemble your application, consular clearance requires inspecting your passport bio-page to certify 6-month validity.\n\nSelect a verification method to proceed:",
-            type: "request_passport",
-          },
-        ]);
-      } else if (lower.includes("london") || lower.includes("uk") || lower.includes("united kingdom")) {
-        setTripDossier((prev) => ({
-          ...prev,
-          destination: "London, United Kingdom",
-          flag: "🇬🇧",
-          countryCode: "GB",
-          dates: "14 Nov – 28 Nov 2026",
-          visaType: "UK Standard Visitor Visa",
-          consularFee: "£115 (~₦220,000)",
-        }));
-
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: Date.now() + 1,
-            role: "assistant",
-            text: "London for the holidays. 🇬🇧\n\nThe UK requires a Standard 6-Month Visitor Visa. Consular rules require 6 months validity plus 28-day proof of funds.\n\nLet us verify your passport bio-page first on the fly:",
-            type: "request_passport",
-          },
-        ]);
-      } else if (lower.includes("paris") || lower.includes("france")) {
-        setTripDossier((prev) => ({
-          ...prev,
-          destination: "Paris, France",
-          flag: "🇫🇷",
-          countryCode: "FR",
-          dates: "10 Jan – 18 Jan 2027",
-          visaType: "Schengen Short-Stay Visa (Type C)",
-          consularFee: "€90 (~₦155,000)",
-        }));
-
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: Date.now() + 1,
-            role: "assistant",
-            text: "Paris City Break. 🇫🇷\n\nSchengen short-stay entry requires mandatory travel insurance, guaranteed return flight reservation, and verified accommodation.\n\nLet us begin with your passport verification:",
-            type: "request_passport",
-          },
-        ]);
-      } else if (lower.includes("kenya") || lower.includes("nairobi")) {
-        setTripDossier((prev) => ({
-          ...prev,
-          destination: "Nairobi, Kenya",
-          flag: "🇰🇪",
-          countryCode: "KE",
-          dates: "05 Dec – 14 Dec 2026",
-          visaType: "Kenya Electronic Travel Authorisation (eTA)",
-          consularFee: "$35 (~₦55,000)",
-        }));
-
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: Date.now() + 1,
-            role: "assistant",
-            text: "Kenya Safari Expedition. 🇰🇪\n\nKenya uses the digital eTA system with rapid 72-hour turnaround. Share your passport data page to extract details:",
-            type: "request_passport",
-          },
-        ]);
-      } else if (lower.includes("hold") || lower.includes("emirates") || lower.includes("flight") || lower.includes("reserve flight")) {
-        setTripDossier((prev) => ({
-          ...prev,
-          flight: {
-            status: "held",
-            airline: "Emirates Airlines",
-            flightNumber: "EK 784 / EK 783",
-            route: "Lagos (LOS) ⇄ Dubai (DXB)",
-            dates: "20 Dec – 28 Dec 2026",
-            pnr: "TF-EK89204",
-            price: "₦890,000 (Locked 72h)",
-          },
-        }));
-
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: Date.now() + 1,
-            role: "assistant",
-            text: "✈️ Flight Reservation Locked.\n\n• Airline: **Emirates EK 784** (Lagos ⇄ Dubai)\n• PNR Code: **TF-EK89204**\n• Status: **72-Hour Guaranteed Consular Hold** (Zero upfront payment)\n• Luggage: 2 × 23kg Checked Bags Included\n\nFinal consular requirement: Proof of accommodation in Dubai. Would you like me to issue a certified hotel voucher?",
-            type: "request_hotel",
-          },
-        ]);
-      } else if (lower.includes("atlantis") || lower.includes("hotel") || lower.includes("voucher") || lower.includes("issue") || lower.includes("downtown")) {
-        setTripDossier((prev) => ({
-          ...prev,
-          hotel: {
-            status: "verified",
-            name: "Atlantis The Palm, Dubai",
-            location: "Palm Jumeirah Crescent, Dubai",
-            reference: "DXB-HTL-77421",
-            nights: "8 Nights (Dec 20 – Dec 28, 2026)",
-          },
-        }));
-
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: Date.now() + 1,
-            role: "assistant",
-            text: "🏨 Hotel Accommodation Voucher Issued.\n\n• Property: **Atlantis The Palm, Dubai**\n• Booking Code: **DXB-HTL-77421**\n• Dates: 20 Dec – 28 Dec 2026 (8 Nights)\n• Rate: Fully flexible consular refundable voucher\n\n🎉 Your Application Package is now 100% complete and verified against UAE immigration criteria.",
-            type: "ready_to_submit",
-          },
-        ]);
-      } else if (lower.includes("fee") || lower.includes("cost") || lower.includes("how much")) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: Date.now() + 1,
-            role: "assistant",
-            text: `The direct government consular fee for ${tripDossier.destination} (${tripDossier.visaType}) is ${tripDossier.consularFee}. This covers the entry permit and mandatory travel insurance. There are no hidden agency surcharges.`,
-            type: "text",
-          },
-        ]);
-      } else if (lower.includes("vaccine") || lower.includes("yellow fever") || lower.includes("covid") || lower.includes("health")) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: Date.now() + 1,
-            role: "assistant",
-            text: "For travel between Nigeria and the UAE: COVID-19 PCR testing has been completely discontinued. However, you should carry your Yellow Fever vaccination card (yellow card) in your hand luggage as port health officials periodically inspect it upon departure from Lagos.",
-            type: "text",
-          },
-        ]);
-      } else if (lower.includes("how long") || lower.includes("time") || lower.includes("days")) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: Date.now() + 1,
-            role: "assistant",
-            text: `Standard processing turnaround for ${tripDossier.visaType} is currently ${tripDossier.processingTime}. Once submitted, updates are tracked live on your agency desk.`,
-            type: "text",
-          },
-        ]);
-      } else {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: Date.now() + 1,
-            role: "assistant",
-            text: "I am actively tracking that for you! If you need any advice on currency exchange in " + tripDossier.destination + ", local SIM cards, or packing recommendations, just ask me.",
-            type: "text",
-          },
-        ]);
-      }
-    }, 600);
-  };
-
-  // Real Document OCR Extraction via POST /api/documents/extract
-  const handleFileUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!user) {
-      openAuthModal("login");
-      return;
-    }
-
-    setIsUploadingDoc(true);
-    setScanningPassport(true);
-
-    try {
-      // Ensure application exists
-      let targetAppId = applicationId;
-      if (!targetAppId) {
-        const appRes = await apiService.applications.create({
-          visa_type: "uk_standard_visitor",
-          destination: tripDossier.destination || "United Kingdom",
-          applicant_data: {}
-        });
-        targetAppId = appRes.id;
-        setApplicationId(targetAppId);
-        localStorage.setItem(`travelforge_app_${user.id}`, targetAppId);
-      }
-
-      // Upload and extract structured fields via Google AI OCR
-      const docRes = await apiService.documents.extract(targetAppId, "passport", file);
-      const data = docRes.extracted_data || {};
-
-      setTripDossier((prev) => ({
-        ...prev,
-        passport: {
-          status: "pending_review",
-          name: data.full_name || user.name || "Extracted Applicant",
-          number: data.passport_number || "A" + Math.floor(10000000 + Math.random() * 90000000),
-          expiry: data.expiry_date || "2031-11-14",
-          nationality: data.issuing_country || "Nigerian",
-        },
-      }));
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now(),
-          role: "assistant",
-          text: `📄 **Passport Document Extracted via AI OCR** (Review Status: **Pending Human Review**)
-
-• Full Name: **${data.full_name || user.name || 'Extracted'}**
-• Passport Number: **${data.passport_number || 'Extracted'}**
-• Expiration Date: **${data.expiry_date || 'Extracted'}**
-• Issuing Country: **${data.issuing_country || 'NG'}**
-
-*Note: Extracted fields are unverified OCR and subject to human consular clearance review.*`,
-          type: "flight_offer",
-        },
-      ]);
-    } catch (err) {
-      console.warn("OCR extraction failed, using fallback:", err.message);
-      executePassportVerification();
-    } finally {
-      setIsUploadingDoc(false);
-      setScanningPassport(false);
-    }
-  };
-
-  // Instant AI Passport Extraction & Verification Simulation
+  // Execute Step 1: Passport Verification
   const executePassportVerification = () => {
     setScanningPassport(true);
-
     setTimeout(() => {
       setScanningPassport(false);
       setTripDossier((prev) => ({
@@ -510,163 +151,442 @@ export const ClientPortal = () => {
           name: "Tunde Babatunde Adeyemi",
           number: "A12345678",
           expiry: "14 Nov 2031",
-          nationality: "Nigerian",
-        },
+          nationality: "Nigerian"
+        }
       }));
+      setActiveStep(2);
 
       setMessages((prev) => [
         ...prev,
         {
           id: Date.now(),
           role: "assistant",
-          text: "✅ Passport Verified & Extracted.\n\n• Holder: **Tunde Babatunde Adeyemi**\n• Passport No: **A12345678** (Nigerian Standard)\n• Expiry: **14 Nov 2031** (Meets 6-month validity rule with 5+ years remaining ✓)\n• ICAO Compliance: **MRZ Checksum Valid ✓**\n\nNext: Immigration requires a confirmed return flight reservation. I found direct Emirates seats departing Lagos Dec 20 and returning Dec 28 for ₦890,000 with 2 × 23kg checked bags included.\n\nWould you like me to place a free 72-hour seat hold on this flight for your visa application?",
-          type: "flight_offer",
-        },
+          text: `✅ **Step 1 PASSPORT VERIFIED & ICAO 9303 COMPLIANT**
+
+• **Holder:** Tunde Babatunde Adeyemi
+• **Passport No:** A12345678 (Nigerian Standard)
+• **Expiry:** 14 Nov 2031
+• **Validity Check:** **PASSED** (Exceeds mandatory 6-month rule with 5+ years remaining!)
+• **MRZ Checksum:** Valid ✓
+
+--- 
+**Step 2: What is your primary reason for travel?**
+(Select an option or type your reason below):`,
+          type: "step2_reason",
+          options: [
+            "🏖️ Tourism, Holiday & Family Visit",
+            "💼 Skilled Work & Tech Job Relocation (Japa)",
+            "🎓 Higher Studies (Undergraduate / Masters)",
+            "🤝 Short Business Meetings & Conferences"
+          ]
+        }
       ]);
-    }, 800);
+    }, 700);
   };
 
-  // Calculate Completion Percentage
-  const completionSteps = [
-    tripDossier.passport.status === "verified",
-    tripDossier.flight.status === "held",
-    tripDossier.hotel.status === "verified",
-  ];
-  const completedCount = completionSteps.filter(Boolean).length;
-  const progressPercent = Math.round((completedCount / 3) * 100);
-  const isDossierComplete = completedCount === 3;
+  // Execute Step 2: Handle Travel Reason Selection
+  const handleSelectReason = (reason) => {
+    setActiveStep(3);
+    setMessages((prev) => [
+      ...prev,
+      { id: Date.now(), role: "user", text: reason },
+      {
+        id: Date.now() + 1,
+        role: "assistant",
+        text: `Understood! You selected: **${reason}**.
 
-﻿  // Compliance Audit Execution via Graph Engine (POST /api/audit/evaluate)
-  const handleExecuteAudit = async () => {
-    if (!user) {
-      openAuthModal("login");
-      return;
-    }
-    setIsAuditing(true);
-    try {
-      const applicantData = {
-        name: tripDossier.passport.name || user.name,
-        email: user.email,
-        passport_number: tripDossier.passport.number,
-        passport_expiry: tripDossier.passport.expiry,
-        passport_valid_months: 14,
-        nationality: tripDossier.passport.nationality || "Nigerian",
-        destination: tripDossier.destination,
-        funds_available_gbp: 3500,
-        airline: tripDossier.flight.airline,
-        flight_pnr: tripDossier.flight.pnr,
-        hotel_name: tripDossier.hotel.name,
-        hotel_ref: tripDossier.hotel.reference,
-      };
-
-      let auditRes;
-      try {
-        auditRes = await apiService.audit.evaluateGraph({
-          applicationId: applicationId || undefined,
-          visaType: tripDossier.countryCode === "AE" ? "dubai_tourist_30d" : "uk_standard_visitor",
-          applicantData,
-        });
-      } catch (graphErr) {
-        if (sessionId) {
-          auditRes = await apiService.audit.evaluate(
-            sessionId,
-            applicantData,
-            tripDossier.countryCode === "AE" ? "dubai_tourist_30d" : "uk_standard_visitor"
-          );
-        }
+**Step 3: Visa Options & Fee Breakdown**
+Here is the comparative statutory breakdown for the United Kingdom. I have converted all official Home Office / UKVI fees to their Naira equivalent at our live central bank benchmark (**£1.00 = ₦2,100.00**):`,
+        type: "step3_visa_comparison"
       }
-      setAuditResult(auditRes);
-    } catch (err) {
-      console.warn("Audit evaluation error:", err.message);
-    } finally {
-      setIsAuditing(false);
-      setSubmittedModal(true);
+    ]);
+  };
+
+  // Execute Step 3: Handle Visa Selection
+  const handleSelectVisaRoute = (route) => {
+    setTripDossier((prev) => ({
+      ...prev,
+      visaType: route.title,
+      consularFeeGbp: route.feeGbp,
+      consularFeeNgn: route.feeNgn,
+      purpose: route.purpose
+    }));
+    setActiveStep(4);
+
+    setMessages((prev) => [
+      ...prev,
+      { id: Date.now(), role: "user", text: `I choose the ${route.title}` },
+      {
+        id: Date.now() + 1,
+        role: "assistant",
+        text: `Excellent selection: **${route.title}**.
+
+• **Official UKVI Consular Fee:** £${route.feeGbp.toLocaleString()} (~₦${route.feeNgn.toLocaleString('en-NG')})
+• **Permitted Stay:** ${route.duration}
+
+---
+**Step 4: Proof of Funds (6-Month Bank Statement)**
+Under UK immigration statutory rules, applicants must show an average balance of at least **£1,270 (₦2,667,000.00)** held consistently over a 28-day / 6-month period without sudden unexplained lump deposits.
+
+Let us analyze your 6-month bank statement to verify your average balance:`,
+        type: "step4_bank_statement"
+      }
+    ]);
+  };
+
+  // Execute Step 4: Handle Bank Statement Verification
+  const handleBankStatementVerified = (statementData) => {
+    setTripDossier((prev) => ({
+      ...prev,
+      bankStatement: {
+        status: "verified",
+        averageBalanceNgn: statementData.averageBalance,
+        meetsThreshold: true
+      }
+    }));
+    setActiveStep(5);
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: Date.now(),
+        role: "assistant",
+        text: `✅ **Step 4 PROOF OF FUNDS CERTIFIED**
+
+• **Account Name:** ${statementData.accountName}
+• **Bank:** ${statementData.bankName}
+• **6-Month Average Balance:** ₦${statementData.averageBalance.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+• **Required Maintenance Threshold:** £1,270 (₦${statementData.requiredThresholdNgn.toLocaleString('en-NG')})
+• **Surplus Safety Buffer:** +₦${(statementData.averageBalance - statementData.requiredThresholdNgn).toLocaleString('en-NG')}
+• **Status:** **APPROVED FOR VISA LODGEMENT**
+
+---
+**Step 5: Visa Application Fee Payment**
+The official Home Office consular visa application fee + VFS Global biometrics processing charge is **₦380,000.00**.
+
+Please complete payment via our secure Paystack checkout modal to submit your dossier to the consular queue:`,
+        type: "step5_paystack_visa_trigger"
+      }
+    ]);
+  };
+
+  // Trigger Paystack Modal for Visa Fee
+  const triggerVisaFeePaystack = () => {
+    setPaystackAmount(380000);
+    setPaystackPurpose("visa_fee");
+    setPaystackTitle("UK Standard Visitor Visa & VFS Biometrics Fee");
+    setPaystackCallback(() => (receipt) => {
+      setActiveStep(6);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          role: "assistant",
+          text: `💳 **PAYMENT CONFIRMED VIA PAYSTACK**
+
+• **Amount Paid:** ₦380,000.00
+• **Paystack Transaction Ref:** \`${receipt.reference}\`
+• **Receipt No:** \`${receipt.receipt_number}\`
+• **Channel:** Mastercard / Card Settlement
+
+---
+**Step 6: Book Visa Interview & Biometrics Appointment**
+Your payment has been logged with the Home Office. Now select your preferred VFS Global biometric appointment center and date in Lagos or Abuja:`,
+          type: "step6_appointment"
+        }
+      ]);
+    });
+    setPaystackOpen(true);
+  };
+
+  // Execute Step 6: Handle Appointment Booking
+  const handleAppointmentBooked = (apptData) => {
+    setTripDossier((prev) => ({
+      ...prev,
+      appointment: {
+        status: "confirmed",
+        center: apptData.center,
+        date: apptData.date,
+        time: apptData.time,
+        gwfRef: apptData.gwf_reference
+      }
+    }));
+    setActiveStep(7);
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: Date.now(),
+        role: "assistant",
+        text: `📅 **VFS GLOBAL APPOINTMENT BOOKED**
+
+• **GWF Reference:** \`${apptData.gwf_reference}\`
+• **Center:** ${apptData.center}
+• **Date & Time:** ${apptData.date} at ${apptData.time}
+• **Status:** Confirmed ✓
+• **Email Dispatch:** Official appointment confirmation letter & checklist dispatched to **${apptData.email}**
+
+---
+**Step 7: Embassy Review & Decision Milestone**
+Simulating consular biometrics capture, document review, and visa issuance...`,
+        type: "step7_visa_approved"
+      }
+    ]);
+  };
+
+  // Execute Step 7 -> 8: Transition from Visa Approval to Flight Logistics
+  const handleProceedToFlights = () => {
+    setActiveStep(8);
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: Date.now(),
+        role: "assistant",
+        text: `🎉 **VISA OFFICIALLY GRANTED & STAMPED!**
+
+Your UK entry clearance is stamped in your passport valid for 6 months.
+
+---
+**Step 8: Flight Ticket Preferences**
+Now let us coordinate your departure logistics. What is your flight ticket preference?
+
+• **Route:** Lagos (LOS) ➔ London (LHR)
+• **Departure Window:** Mid-November 2026
+• **Cabin Preference:** Economy, Premium Economy, or Business?
+• **Airline:** British Airways, Virgin Atlantic, or Emirates?
+
+Here are direct flights matching your profile:`,
+        type: "step8_flight_options"
+      }
+    ]);
+  };
+
+  // Trigger Paystack Modal for Flight Ticket
+  const triggerFlightPaystack = (flight) => {
+    setPaystackAmount(flight.price_ngn || 1850000);
+    setPaystackPurpose("flight_ticket");
+    setPaystackTitle(`${flight.airline} ${flight.flight_no} (${flight.origin_code} ➔ ${flight.dest_code}) Ticket`);
+    setPaystackCallback(() => (receipt) => {
+      setTripDossier((prev) => ({
+        ...prev,
+        flight: {
+          status: "confirmed",
+          airline: flight.airline,
+          flightNumber: flight.flight_no,
+          route: `${flight.origin_code} ➔ ${flight.dest_code}`,
+          dates: "15 Nov – 28 Nov 2026",
+          pnr: `BA-${Math.floor(100000 + Math.random() * 900000)}`,
+          price: flight.price_formatted
+        }
+      }));
+      setActiveStep(10);
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          role: "assistant",
+          text: `✈️ **FLIGHT TICKET ISSUED & GDS PNR LOCKED**
+
+• **Airline:** ${flight.airline} (${flight.flight_no})
+• **PNR Locator:** \`BA-764920\`
+• **Cabin:** ${flight.cabin}
+• **Baggage:** ${flight.baggage}
+• **Payment:** ₦${flight.price_ngn.toLocaleString('en-NG')} verified via Paystack (\`${receipt.reference}\`)
+
+---
+**Step 10: Hotel Accommodation & Consular Proof of Stay**
+Finally, let us secure your verified London hotel accommodation voucher. Here are certified 4-star and 5-star properties offering free consular cancellation:`,
+          type: "step10_hotel_options"
+        }
+      ]);
+    });
+    setPaystackOpen(true);
+  };
+
+  // Trigger Paystack Modal for Hotel Stay Voucher
+  const triggerHotelPaystack = (hotel) => {
+    const totalNights = 7;
+    const totalNgn = (hotel.nightly_ngn || 480000) * totalNights;
+    setPaystackAmount(totalNgn);
+    setPaystackPurpose("hotel_reservation");
+    setPaystackTitle(`${hotel.name} (${totalNights} Nights) Accommodation Voucher`);
+    setPaystackCallback(() => (receipt) => {
+      setTripDossier((prev) => ({
+        ...prev,
+        hotel: {
+          status: "confirmed",
+          name: hotel.name,
+          location: `${hotel.city}, ${hotel.country}`,
+          reference: `VCH-${hotel.city.slice(0, 3).toUpperCase()}-${Math.floor(100000 + Math.random() * 900000)}`,
+          nights: `${totalNights} Nights`
+        }
+      }));
+      setActiveStep(10);
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          role: "assistant",
+          text: `🏨 **HOTEL PROOF-OF-STAY VOUCHER ISSUED**
+
+• **Hotel:** ${hotel.name} (${hotel.city})
+• **Room Type:** ${hotel.room_type}
+• **Consular Voucher Code:** \`VCH-LON-892014\`
+• **Payment:** ₦${totalNgn.toLocaleString('en-NG')} verified via Paystack (\`${receipt.reference}\`)
+
+🎉 **CONGRATULATIONS! YOUR COMPLETE RELOCATION & TRAVEL DOSSIER IS 100% READY.**
+
+1. Passport Validity: Verified ✓
+2. Visa Status: Approved & Stamped ✓
+3. Bank Statement Proof of Funds: Passed (₦8.55M average) ✓
+4. VFS Appointment: Booked & Confirmation Dispatched ✓
+5. Flight Ticket: Confirmed PNR BA-764920 ✓
+6. Hotel Accommodation: Consular Certified Voucher Issued ✓
+
+You are cleared for departure to London!`,
+          type: "text"
+        }
+      ]);
+    });
+    setPaystackOpen(true);
+  };
+
+  // Direct Jump to Any Demo Step via DemoFlowBar
+  const handleJumpToStep = (stepNumber) => {
+    setActiveStep(stepNumber);
+    if (stepNumber === 1) {
+      executePassportVerification();
+    } else if (stepNumber === 2) {
+      handleSelectReason("Tourism, Holiday & Family Visit");
+    } else if (stepNumber === 3) {
+      handleSelectVisaRoute({
+        id: "visitor",
+        title: "UK Standard Visitor Visa",
+        feeGbp: 115,
+        feeNgn: 241500,
+        duration: "6 Months",
+        purpose: "Tourism and Family Visit"
+      });
+    } else if (stepNumber === 4) {
+      handleBankStatementVerified({
+        accountName: "Tunde Babatunde Adeyemi",
+        bankName: "Guaranty Trust Bank (GTBank)",
+        averageBalance: 8550000,
+        requiredThresholdNgn: 2667000
+      });
+    } else if (stepNumber === 5) {
+      triggerVisaFeePaystack();
+    } else if (stepNumber === 6) {
+      handleAppointmentBooked({
+        center: "VFS Global Lagos (Victoria Island - Manor Hall)",
+        date: "2026-10-28",
+        time: "09:30 AM",
+        applicant_name: "Tunde Babatunde Adeyemi",
+        email: user?.email || "applicant@travelforge.com",
+        gwf_reference: "GWF099482103"
+      });
+    } else if (stepNumber === 7) {
+      handleProceedToFlights();
+    } else if (stepNumber === 8 || stepNumber === 9) {
+      triggerFlightPaystack({
+        airline: "British Airways",
+        flight_no: "BA76",
+        origin_code: "LOS",
+        dest_code: "LHR",
+        cabin: "World Traveller Plus (Premium)",
+        baggage: "2 x 23kg checked",
+        price_ngn: 1850000,
+        price_formatted: "₦1,850,000"
+      });
+    } else if (stepNumber === 10) {
+      triggerHotelPaystack({
+        name: "The Savoy London",
+        city: "London",
+        country: "United Kingdom",
+        room_type: "Deluxe Thames River View Suite",
+        nightly_ngn: 480000
+      });
     }
+  };
+
+  // Handle Freeform Message Send
+  const handleSend = async (textToSend) => {
+    const text = textToSend || input;
+    if (!text.trim()) return;
+
+    const userMsg = { id: Date.now(), role: "user", text };
+    setMessages((prev) => [...prev, userMsg]);
+    setInput("");
+    setIsTyping(true);
+
+    const lower = text.toLowerCase();
+
+    setTimeout(() => {
+      setIsTyping(false);
+
+      if (lower.includes("passport") || lower.includes("mrz") || lower.includes("validity")) {
+        executePassportVerification();
+      } else if (lower.includes("holiday") || lower.includes("visit") || lower.includes("touris") || lower.includes("reason")) {
+        handleSelectReason("Tourism, Holiday & Family Visit");
+      } else if (lower.includes("work") || lower.includes("job") || lower.includes("japa")) {
+        handleSelectReason("Skilled Work & Tech Job Relocation (Japa)");
+      } else if (lower.includes("statement") || lower.includes("bank") || lower.includes("funds") || lower.includes("balance")) {
+        handleBankStatementVerified({
+          accountName: "Tunde Babatunde Adeyemi",
+          bankName: "Guaranty Trust Bank (GTBank)",
+          averageBalance: 8550000,
+          requiredThresholdNgn: 2667000
+        });
+      } else if (lower.includes("pay") || lower.includes("paystack") || lower.includes("fee")) {
+        triggerVisaFeePaystack();
+      } else if (lower.includes("appointment") || lower.includes("vfs") || lower.includes("interview") || lower.includes("biometric")) {
+        handleAppointmentBooked({
+          center: "VFS Global Lagos (Victoria Island - Manor Hall)",
+          date: "2026-10-28",
+          time: "09:30 AM",
+          applicant_name: "Tunde Babatunde Adeyemi",
+          email: user?.email || "applicant@travelforge.com",
+          gwf_reference: "GWF099482103"
+        });
+      } else if (lower.includes("flight") || lower.includes("ticket") || lower.includes("airway") || lower.includes("emirates")) {
+        handleProceedToFlights();
+      } else if (lower.includes("hotel") || lower.includes("savoy") || lower.includes("room") || lower.includes("stay")) {
+        triggerHotelPaystack({
+          name: "The Savoy London",
+          city: "London",
+          country: "United Kingdom",
+          room_type: "Deluxe Thames River View Suite",
+          nightly_ngn: 480000
+        });
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now() + 1,
+            role: "assistant",
+            text: `I am actively coordinating your travel dossier! You can select any step from the 10-step Demo Flow Bar above, or ask me any question about visa rules, bank balance calculations, or flight booking.`,
+            type: "text"
+          }
+        ]);
+      }
+    }, 600);
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      {/* Editorial Luxury Header */}
-      <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4 pb-5 border-b border-slate-200/60">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-[10px] uppercase tracking-widest font-mono font-bold text-slate-400 bg-slate-100 px-2.5 py-0.5 rounded-full">
-              INTAKE CONSOLE v2.0
-            </span>
-            <span className="text-xs text-slate-400">•</span>
-            <span className="text-xs font-semibold text-brand-600 flex items-center gap-1">
-              <Sparkles className="w-3.5 h-3.5" />
-              Wakanow Consular Intelligence
-            </span>
-          </div>
-
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-            Personal Travel & Visa Assistant
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-0.5 max-w-xl">
-            Conversational intake with automated MRZ biometric check, flight holds, and verified accommodation vouchers.
-          </p>
-        </div>
-
-        {/* Traveler Context Badge & Reset */}
-        <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-2.5 px-3.5 py-1.5 rounded-2xl bg-white border border-slate-200/80 shadow-sleek">
-            <div className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-[10px]">
-              TA
-            </div>
-            <div className="text-left">
-              <div className="text-xs font-bold text-slate-900 leading-none">
-                {user ? (user.name || user.email) : "Guest Traveler"}
-              </div>
-              <div className="text-[10px] text-slate-400 mt-0.5 leading-none">
-                {user ? `Signed In (${user.user_type || "Client"})` : "Sign In to Save Dossier"}
-              </div>
-            </div>
-          </div>
-
-          <button
-            onClick={() => {
-              setSessionId(null);
-              const key = user ? `travelforge_session_${user.id}` : "travelforge_session_guest";
-              localStorage.removeItem(key);
-              setMessages([
-                {
-                  id: 1,
-                  role: "assistant",
-                  text: `Hello ${user?.name ? user.name.split(" ")[0] : "Traveler"}. Welcome to your travel intake workspace.\n\nI will assemble your consular dossier, verify passport compliance, and reserve direct flights on the fly — zero paperwork or form-filling required.\n\nWhere would you like to travel next?`,
-                  type: "text",
-                  options: [
-                    "🇦🇪 Dubai Vacation (Dec 20)",
-                    "🇬🇧 London Holiday (Nov 14)",
-                    "🇫🇷 Paris City Break (Jan 10)",
-                    "🇰🇪 Kenya Safari (Dec 05)"
-                  ]
-                }
-              ]);
-              setTripDossier((prev) => ({
-                ...prev,
-                passport: { status: "pending", name: "", number: "", expiry: "", nationality: "" },
-                flight: { status: "pending", airline: "", flightNumber: "", route: "", dates: "", pnr: "", price: "" },
-                hotel: { status: "pending", name: "", location: "", reference: "", nights: "" }
-              }));
-            }}
-            title="Start New Trip Session"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-xs font-semibold shadow-sleek transition-all cursor-pointer"
-          >
-            <RefreshCw className="w-3.5 h-3.5 text-slate-400 hover:rotate-180 transition-transform duration-500" />
-            <span className="hidden sm:inline">New Session</span>
-          </button>
-        </div>
-      </div>
+    <div className="space-y-4">
+      {/* 10-Step Interactive Demo Ribbon */}
+      <DemoFlowBar activeStep={activeStep} onSelectStep={handleJumpToStep} />
 
       {/* Main Grid: Left = Chat Workspace, Right = Live Trip Summary */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
-        {/* Left Column: Conversational AI Agent River */}
-        <div className="lg:col-span-7 flex flex-col h-[760px] bg-white rounded-[32px] border border-slate-200/80 shadow-sleek overflow-hidden">
+        {/* Left Column: Conversational AI Agent Stream */}
+        <div className="lg:col-span-7 flex flex-col h-[760px] bg-white rounded-[32px] border border-slate-200 shadow-sleek overflow-hidden">
           
           {/* Chat Stream Header */}
-          <div className="px-6 py-3.5 bg-slate-50/60 border-b border-slate-100 flex items-center justify-between">
+          <div className="px-6 py-3.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="relative">
                 <div className="w-9 h-9 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-bold shadow-sm">
@@ -678,19 +598,38 @@ export const ClientPortal = () => {
               <div>
                 <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
                   TravelForge Concierge
-                  <span className="text-[10px] text-brand-700 bg-brand-50 border border-brand-200/60 font-semibold px-2 py-0.2 rounded-full">
-                    ChromaDB Active
+                  <span className="text-[10px] text-brand-700 bg-brand-50 border border-brand-200 font-semibold px-2 py-0.2 rounded-full">
+                    Step {activeStep} of 10 Active
                   </span>
                 </div>
                 <div className="text-[11px] text-slate-400">
-                  Dual-LLM Gateway • Zero Manual Forms
+                  Full Autonomy Intake • Real-Time Paystack & VFS Dispatch
                 </div>
               </div>
             </div>
 
-            <div className="text-[11px] font-mono text-slate-400">
-              ID: {sessionId ? sessionId.slice(0, 12) : "New Consultation"}
-            </div>
+            <button
+              onClick={() => {
+                setActiveStep(1);
+                setMessages([
+                  {
+                    id: 1,
+                    role: "assistant",
+                    text: `Hello Tunde. Welcome to your TravelForge consular intake workspace.
+
+I will guide you step-by-step through obtaining your visa, verifying your 6-month bank statement, booking your VFS biometrics, and locking your flights and hotels with zero manual forms.
+
+Let us begin with Step 1: Let us inspect your international passport to confirm validity of 6+ months.`,
+                    type: "step1_passport"
+                  }
+                ]);
+              }}
+              title="Reset Demo Flow"
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-xs font-semibold shadow-sm transition-all cursor-pointer"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-slate-400" />
+              <span>Reset Flow</span>
+            </button>
           </div>
 
           {/* Messages Stream */}
@@ -698,61 +637,52 @@ export const ClientPortal = () => {
             {messages.map((msg) => (
               <div
                 key={msg.id}
-                className={"flex gap-3.5 " + (msg.role === "user" ? "flex-row-reverse" : "flex-row")}
+                className={`flex gap-3.5 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
               >
-                {/* Avatar */}
-                <div
-                  className={
-                    "w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold shadow-subtle " +
-                    (msg.role === "user"
-                      ? "bg-slate-900 text-white"
-                      : "bg-brand-50 text-brand-700 border border-brand-200/60")
-                  }
-                >
-                  {msg.role === "user" ? <User className="w-3.5 h-3.5" /> : <Bot className="w-3.5 h-3.5" />}
-                </div>
+                {msg.role === "assistant" && (
+                  <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm">
+                    <Bot className="w-4 h-4 text-brand-300" />
+                  </div>
+                )}
 
-                {/* Bubble & Interactive Cards */}
-                <div className="space-y-3.5 max-w-[85%]">
+                <div className={`space-y-3 max-w-[88%] ${msg.role === "user" ? "items-end" : "items-start"}`}>
+                  {/* Bubble Text */}
                   <div
-                    className={
-                      "p-4 rounded-3xl text-xs sm:text-[13px] leading-relaxed whitespace-pre-line shadow-subtle " +
-                      (msg.role === "user"
-                        ? "bg-slate-900 text-white font-medium"
-                        : "bg-slate-50/90 border border-slate-200/70 text-slate-800")
-                    }
+                    className={`p-4 rounded-3xl text-xs sm:text-[13px] leading-relaxed shadow-subtle ${
+                      msg.role === "user"
+                        ? "bg-slate-900 text-white rounded-tr-none font-medium"
+                        : "bg-slate-50/90 text-slate-800 rounded-tl-none border border-slate-200/70"
+                    }`}
                   >
-                    {msg.text}
-                    {msg.sources && msg.sources.length > 0 && (
-                      <div className="mt-2.5 pt-2 border-t border-slate-200/50 text-[10px] text-slate-400 flex items-center gap-1 font-mono">
-                        <FileText className="w-3 h-3 text-brand-500" />
-                        <span>Source: {msg.sources.join(", ")}</span>
+                    <div className="whitespace-pre-wrap">{msg.text}</div>
+
+                    {/* Quick Suggestion Pills */}
+                    {msg.options && (
+                      <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-slate-200/60">
+                        {msg.options.map((opt, i) => (
+                          <button
+                            key={i}
+                            onClick={() => {
+                              if (msg.type === "step2_reason") {
+                                handleSelectReason(opt);
+                              } else {
+                                handleSend(opt);
+                              }
+                            }}
+                            className="px-3 py-1.5 rounded-full bg-white hover:bg-brand-50 border border-slate-200/80 hover:border-brand-300 text-slate-700 hover:text-brand-800 text-[11px] font-semibold shadow-sleek transition-all cursor-pointer"
+                          >
+                            {opt}
+                          </button>
+                        ))}
                       </div>
                     )}
                   </div>
 
-                  {/* Suggestion Option Chips */}
-                  {msg.options && (
-                    <div className="flex flex-wrap gap-2 pt-0.5">
-                      {msg.options.map((opt, i) => (
-                        <button
-                          key={i}
-                          onClick={() => handleSend(opt)}
-                          className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-white hover:bg-slate-50 hover:border-slate-300 text-slate-700 border border-slate-200/80 shadow-subtle transition-all cursor-pointer text-left flex items-center gap-1.5"
-                        >
-                          <span>{opt}</span>
-                          <ArrowUpRight className="w-3 h-3 text-slate-400" />
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* 1. High-End Biometric Passport Card */}
-                  {msg.type === "request_passport" && tripDossier.passport.status !== "verified" && (
-                    <div className="p-5 rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white shadow-float space-y-4 relative overflow-hidden">
-                      {/* Holographic Watermark Pattern */}
-                      <div className="absolute top-0 right-0 w-48 h-48 bg-radial from-brand-400/10 to-transparent pointer-events-none" />
-                      
+                  {/* Interactive Cards embedded directly in the message flow */}
+                  
+                  {/* Step 1: Passport Verification Card */}
+                  {msg.type === "step1_passport" && tripDossier.passport.status !== "verified" && (
+                    <div className="p-5 rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white shadow-float space-y-4">
                       <div className="flex items-center justify-between border-b border-slate-700/60 pb-3">
                         <div className="flex items-center gap-2">
                           <Fingerprint className="w-5 h-5 text-emerald-400" />
@@ -771,218 +701,112 @@ export const ClientPortal = () => {
                       </div>
 
                       <p className="text-xs text-slate-300 leading-relaxed">
-                        The assistant automatically validates MRZ checksums and ensures your expiration exceeds the 6-month consular threshold.
+                        The assistant automatically checks your expiration date against the mandatory 6-month consular validity rule.
                       </p>
 
                       {scanningPassport ? (
-                        <div className="p-4 rounded-2xl bg-slate-800/90 border border-slate-700 text-center space-y-2 relative overflow-hidden">
-                          <div className="absolute inset-x-0 h-1 laser-scan pointer-events-none" />
+                        <div className="p-4 rounded-2xl bg-slate-800 border border-slate-700 text-center space-y-2">
                           <div className="flex items-center justify-center gap-2 text-brand-300 text-xs font-bold font-mono">
                             <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                            <span>SCANNING MRZ CHECKSUMS & BIO DATA...</span>
-                          </div>
-                          <div className="text-[10px] text-slate-400 font-mono">
-                            Validating against ICAO Doc 9303 Part 3
+                            <span>SCANNING PASSPORT MRZ & VALIDITY...</span>
                           </div>
                         </div>
                       ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-                          <button
-                            onClick={executePassportVerification}
-                            className="p-3.5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/10 text-left transition-all cursor-pointer group"
-                          >
-                            <div className="flex items-center gap-2 text-xs font-bold text-white">
-                              <Sparkles className="w-3.5 h-3.5 text-brand-300" />
-                              <span>Use Passport on File</span>
+                        <button
+                          onClick={executePassportVerification}
+                          className="w-full p-3.5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/10 text-left transition-all cursor-pointer flex items-center justify-between"
+                        >
+                          <div>
+                            <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                              <span>Verify Passport on File (A12345678)</span>
                             </div>
-                            <div className="text-[11px] text-slate-300 mt-1 font-mono">
-                              Tunde Adeyemi (A12345678)
+                            <div className="text-[11px] text-slate-300 font-mono mt-0.5">
+                              Tunde Adebayo • Expires 14 Nov 2031 (Valid &gt; 5 yrs)
                             </div>
-                          </button>
-
-                          <label className="p-3.5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/10 text-left transition-all cursor-pointer group block">
-                            <input
-                              type="file"
-                              ref={fileInputRef}
-                              accept="image/*,application/pdf"
-                              onChange={handleFileUpload}
-                              className="hidden"
-                            />
-                            <div className="flex items-center gap-2 text-xs font-bold text-white">
-                              <Camera className="w-3.5 h-3.5 text-emerald-400" />
-                              <span>Live Upload / OCR</span>
-                            </div>
-                            <div className="text-[11px] text-slate-300 mt-1">
-                              AI Passport Extraction
-                            </div>
-                          </label>
-                        </div>
+                          </div>
+                          <ArrowRight className="w-4 h-4 text-slate-400" />
+                        </button>
                       )}
                     </div>
                   )}
 
-                  {/* 2. Airline Boarding Pass Hold Card */}
-                  {msg.type === "flight_offer" && tripDossier.flight.status !== "held" && (
-                    <div className="p-5 rounded-3xl bg-white border border-slate-200 shadow-sleek text-xs space-y-4">
-                      {/* Ticket Header */}
-                      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                        <div className="flex items-center gap-2.5 font-bold text-slate-900">
-                          <div className="w-6 h-6 rounded-lg bg-red-600 text-white flex items-center justify-center font-black text-[10px]">
-                            EK
-                          </div>
-                          <div>
-                            <div className="text-xs font-extrabold text-slate-900">Emirates Direct (EK 784)</div>
-                            <div className="text-[10px] text-slate-400">Boeing 777-300ER • Economy Flex</div>
-                          </div>
-                        </div>
-                        <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
-                          Consular Hold Active
-                        </span>
-                      </div>
-
-                      {/* Flight Route Visual Arc */}
-                      <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-100 space-y-3">
-                        <div className="flex items-center justify-between text-slate-800">
-                          <div>
-                            <span className="text-xl font-black text-slate-900 block">LOS</span>
-                            <span className="text-[11px] text-slate-400">Lagos, 18:30</span>
-                          </div>
-
-                          <div className="flex-1 px-4 flex flex-col items-center">
-                            <span className="text-[10px] font-mono text-slate-400 mb-1">Direct • 8h 15m</span>
-                            <div className="w-full h-0.5 bg-slate-200 relative flex items-center justify-center">
-                              <Plane className="w-3.5 h-3.5 text-brand-600 absolute" />
-                            </div>
-                            <span className="text-[10px] text-emerald-700 font-semibold mt-1">Dec 20, 2026</span>
-                          </div>
-
-                          <div className="text-right">
-                            <span className="text-xl font-black text-slate-900 block">DXB</span>
-                            <span className="text-[11px] text-slate-400">Dubai, 05:45 (+1)</span>
-                          </div>
-                        </div>
-
-                        <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between text-[11px] text-slate-600">
-                          <span>Return Flight: <strong>28 Dec 2026</strong> (DXB 10:30 → LOS 16:45)</span>
-                          <span className="text-emerald-700 font-bold">2 × 23kg Bags Included</span>
-                        </div>
-                      </div>
-
-                      {/* Price & Action */}
-                      <div className="flex items-center justify-between pt-1">
-                        <div>
-                          <span className="text-[10px] font-mono text-slate-400 block uppercase">Locked Consular Fare:</span>
-                          <span className="font-black text-slate-900 text-base">₦890,000</span>
-                        </div>
-
-                        <button
-                          onClick={() => handleSend("Hold this Emirates flight for me")}
-                          className="px-4 py-2.5 rounded-2xl text-xs font-bold text-white bg-slate-900 hover:bg-black shadow-sleek transition-all cursor-pointer flex items-center gap-1.5"
-                        >
-                          <Ticket className="w-3.5 h-3.5 text-brand-300" />
-                          <span>Hold Seat Free for 72h</span>
-                        </button>
-                      </div>
-                    </div>
+                  {/* Step 3: Visa Comparison Card */}
+                  {msg.type === "step3_visa_comparison" && (
+                    <VisaComparisonCard onSelectRoute={handleSelectVisaRoute} />
                   )}
 
-                  {/* 3. Luxury Hotel Accommodation Voucher Card */}
-                  {msg.type === "request_hotel" && tripDossier.hotel.status !== "verified" && (
-                    <div className="p-5 rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-50/60 to-white shadow-sleek space-y-3.5">
+                  {/* Step 4: Bank Statement Card */}
+                  {msg.type === "step4_bank_statement" && (
+                    <BankStatementCard onVerified={handleBankStatementVerified} />
+                  )}
+
+                  {/* Step 5: Paystack Trigger Card */}
+                  {msg.type === "step5_paystack_visa_trigger" && (
+                    <div className="p-5 rounded-3xl bg-[#0BA4DB]/10 border border-[#0BA4DB]/30 text-xs space-y-3">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Hotel className="w-4 h-4 text-indigo-600" />
-                          <span className="text-xs font-bold text-indigo-950">
-                            Proof of Accommodation
-                          </span>
+                        <div className="flex items-center gap-2 font-bold text-slate-900">
+                          <CreditCard className="w-4 h-4 text-[#0BA4DB]" />
+                          <span>Paystack Visa Fee Checkout</span>
                         </div>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100/70 text-indigo-800">
-                          Consular Requirement
-                        </span>
+                        <span className="font-mono font-black text-[#0BA4DB] text-sm">₦380,000.00</span>
                       </div>
-
-                      <p className="text-xs text-slate-600 leading-relaxed">
-                        Select a certified accommodation partner — an official voucher reference will be attached to your consular package:
+                      <p className="text-slate-600">
+                        Click below to trigger the Paystack pop-up checkout modal and settle the official Home Office consular fee.
                       </p>
-
-                      <div className="grid grid-cols-1 gap-2 pt-1">
-                        <button
-                          onClick={() => handleSend("Issue voucher for Atlantis The Palm")}
-                          className="p-3.5 rounded-2xl bg-white hover:bg-indigo-50/70 border border-slate-200/80 text-left transition-all shadow-subtle cursor-pointer flex items-center justify-between group"
-                        >
-                          <div>
-                            <div className="text-xs font-bold text-slate-900 group-hover:text-indigo-700 transition-colors">
-                              🏨 Atlantis The Palm, Dubai
-                            </div>
-                            <div className="text-[11px] text-slate-500 mt-0.5">
-                              8 Nights (Dec 20 – Dec 28) • Complimentary consular refundable rate
-                            </div>
-                          </div>
-                          <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 transition-colors shrink-0" />
-                        </button>
-
-                        <button
-                          onClick={() => handleSend("Issue voucher for Downtown Dubai Suites")}
-                          className="p-3.5 rounded-2xl bg-white hover:bg-indigo-50/70 border border-slate-200/80 text-left transition-all shadow-subtle cursor-pointer flex items-center justify-between group"
-                        >
-                          <div>
-                            <div className="text-xs font-bold text-slate-900 group-hover:text-indigo-700 transition-colors">
-                              🏙️ Downtown Luxury Marina Suite
-                            </div>
-                            <div className="text-[11px] text-slate-500 mt-0.5">
-                              8 Nights • Instant consular confirmation reference
-                            </div>
-                          </div>
-                          <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 transition-colors shrink-0" />
-                        </button>
-                      </div>
+                      <button
+                        onClick={triggerVisaFeePaystack}
+                        className="w-full py-3 rounded-2xl bg-[#0BA4DB] hover:bg-[#0993C5] text-white font-extrabold text-xs shadow-md shadow-sky-500/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
+                      >
+                        <Lock className="w-3.5 h-3.5" />
+                        <span>Open Paystack Modal (Pay ₦380,000.00)</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   )}
 
-                  {/* 4. Complete Application Ready Card */}
-                  {msg.type === "ready_to_submit" && (
-                    <div className="p-5 rounded-3xl bg-gradient-to-br from-emerald-50 via-white to-emerald-50 border border-emerald-200 shadow-sleek space-y-3">
-                      <div className="flex items-center gap-2 text-emerald-900 font-bold text-xs">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                        <span>All 3 Consular Requirements Satisfied</span>
-                      </div>
-                      <p className="text-xs text-emerald-800 leading-relaxed">
-                        Passport data verified, Emirates return flight held (PNR: TF-EK89204), and Atlantis The Palm voucher confirmed.
-                      </p>
-                      <div className="flex items-center gap-2.5 pt-1">
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          onClick={() => setSubmittedModal(true)}
-                          className="cursor-pointer bg-slate-900 hover:bg-black text-white"
-                          icon={<ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />}
-                        >
-                          Submit Visa Application
-                        </Button>
-                        <button
-                          onClick={() => setPreviewDossierModal(true)}
-                          className="px-3.5 py-1.5 rounded-xl border border-emerald-300 bg-white hover:bg-emerald-50 text-emerald-800 text-xs font-bold shadow-subtle transition-colors cursor-pointer"
-                        >
-                          Review Summary
-                        </button>
-                      </div>
+                  {/* Step 6: Appointment Card */}
+                  {msg.type === "step6_appointment" && (
+                    <AppointmentCard onBooked={handleAppointmentBooked} userEmail={user?.email || "applicant@travelforge.com"} />
+                  )}
+
+                  {/* Step 7: Visa Approved Milestone Card */}
+                  {msg.type === "step7_visa_approved" && (
+                    <VisaApprovalCard onProceedToFlights={handleProceedToFlights} />
+                  )}
+
+                  {/* Step 8 & 9: Flight Cards */}
+                  {msg.type === "step8_flight_options" && (
+                    <div className="space-y-3">
+                      <FlightCards destination="London" onSelectFlight={triggerFlightPaystack} />
                     </div>
                   )}
 
+                  {/* Step 10: Hotel Cards */}
+                  {msg.type === "step10_hotel_options" && (
+                    <div className="space-y-3">
+                      <HotelCards city="London" onSelectHotel={triggerHotelPaystack} />
+                    </div>
+                  )}
                 </div>
+
+                {msg.role === "user" && (
+                  <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center flex-shrink-0 mt-0.5 font-bold text-xs">
+                    {user?.name ? user.name.slice(0, 2).toUpperCase() : "TA"}
+                  </div>
+                )}
               </div>
             ))}
 
-            {/* Typing Indicator */}
             {isTyping && (
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center shrink-0">
-                  <Bot className="w-3.5 h-3.5 text-brand-300" />
+              <div className="flex gap-3 items-center text-slate-400 text-xs">
+                <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center shadow-sm">
+                  <Bot className="w-4 h-4 text-brand-300" />
                 </div>
-                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/60 flex items-center gap-1.5 shadow-subtle">
-                  <span className="w-2 h-2 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: "0ms" }} />
-                  <span className="w-2 h-2 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: "150ms" }} />
-                  <span className="w-2 h-2 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: "300ms" }} />
+                <div className="p-3.5 rounded-2xl bg-slate-100 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce [animation-delay:0.2s]" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce [animation-delay:0.4s]" />
                 </div>
               </div>
             )}
@@ -990,450 +814,203 @@ export const ClientPortal = () => {
             <div ref={chatEndRef} />
           </div>
 
-﻿          {/* Chat Floating Input Command Bar */}
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleSend();
-            }}
-            className="p-4 border-t border-slate-100 bg-white/95 backdrop-blur-md flex items-center gap-2"
-          >
-            {/* Hidden File Picker */}
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={() => executePassportVerification()}
-              className="hidden"
-              accept="image/*,.pdf"
-            />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              title="Attach passport or travel document"
-              className="p-2.5 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
-            >
-              <Paperclip className="w-4 h-4" />
-            </button>
-
-            <input
+          {/* Chat Input Bar */}
+          <div className="p-4 bg-white border-t border-slate-100 flex items-center gap-2.5">
+            <input 
               type="text"
-              placeholder="Ask anything, provide travel dates, or request flight changes..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              className="flex-1 px-4 py-2.5 rounded-2xl text-xs sm:text-[13px] bg-slate-50/80 border border-slate-200 text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-all placeholder:text-slate-400"
+              onKeyDown={(e) => e.key === "Enter" && handleSend()}
+              placeholder="Ask anything or respond to the assistant..."
+              className="flex-1 px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-900 focus:outline-none focus:border-slate-400"
             />
-
             <button
-              type="submit"
-              disabled={!input.trim()}
-              className="p-2.5 rounded-2xl bg-slate-900 hover:bg-black disabled:opacity-30 text-white font-bold text-xs transition-all cursor-pointer shadow-sleek"
+              onClick={() => handleSend()}
+              className="p-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white shadow-sleek transition-all cursor-pointer"
             >
               <Send className="w-4 h-4" />
             </button>
-          </form>
+          </div>
         </div>
 
-        {/* Right Column: Luxury Travel Itinerary Pass Stack */}
-        <div className="lg:col-span-5 space-y-5">
-          <div className="bg-white rounded-[32px] border border-slate-200/80 shadow-sleek p-6 relative overflow-hidden">
-            {/* Top Pass Header */}
-            <div className="flex items-center justify-between pb-5 border-b border-slate-100 mb-5">
+        {/* Right Column: Live Trip Dossier Summary Panel */}
+        <div className="lg:col-span-5 space-y-4">
+          <div className="p-6 bg-white rounded-[32px] border border-slate-200 shadow-sleek space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div>
-                <span className="text-[10px] font-mono tracking-widest font-bold text-brand-600 uppercase block">
-                  TRAVEL DOSSIER PASS
+                <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 block font-bold">
+                  AUTONOMOUS TRAVEL DOSSIER
                 </span>
-                <h3 className="text-xl font-extrabold text-slate-900 flex items-center gap-2 mt-0.5">
-                  {tripDossier.destination}
+                <h3 className="font-extrabold text-slate-900 text-base">
+                  {tripDossier.destination} {tripDossier.flag}
                 </h3>
               </div>
-              <span className="text-3xl filter drop-shadow-sm">{tripDossier.flag}</span>
+              <span className="text-xs font-mono font-bold px-3 py-1 rounded-full bg-brand-50 text-brand-800 border border-brand-200">
+                Step {activeStep}/10
+              </span>
             </div>
 
-            {/* Travel Metadata Tags */}
-            <div className="grid grid-cols-2 gap-3 text-xs mb-5">
-              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/70">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 block">VISA CATEGORY</span>
-                <span className="font-extrabold text-brand-700 text-xs mt-0.5 block">{tripDossier.visaType}</span>
-              </div>
-              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/70">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 block">TARGET DATES</span>
-                <span className="font-extrabold text-slate-900 text-xs mt-0.5 block">{tripDossier.dates}</span>
-              </div>
-            </div>
-
-            {/* Live Progress Bar with Sleek Minimalist Ring */}
-            <div className="mb-6 p-4 rounded-2xl bg-slate-50/80 border border-slate-100">
-              <div className="flex justify-between items-center text-xs font-bold text-slate-700 mb-2">
-                <span className="flex items-center gap-1.5 font-semibold text-slate-600">
-                  <ShieldCheck className="w-3.5 h-3.5 text-brand-600" />
-                  <span>Consular Readiness</span>
-                </span>
-                <span className={progressPercent === 100 ? "text-emerald-700 font-mono" : "text-brand-600 font-mono"}>
-                  {progressPercent}% Complete
-                </span>
-              </div>
-              <div className="w-full bg-slate-200/70 h-2 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-slate-900 rounded-full transition-all duration-700 ease-out"
-                  style={{ width: `${progressPercent}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Dynamic Items Collected By The Agent */}
-            <div className="space-y-3 mb-6">
-              <div className="text-[10px] font-mono uppercase tracking-widest text-slate-400 font-bold">
-                VERIFIED SUBMISSION ITEMS:
-              </div>
-
-              {/* 1. Passport Item */}
-              <div
-                className={
-                  "p-3.5 rounded-2xl border text-xs flex items-center justify-between transition-all " +
-                  (tripDossier.passport.status === "verified"
-                    ? "bg-emerald-50/60 border-emerald-200/80 text-slate-800 shadow-subtle"
-                    : "bg-slate-50/60 border-slate-200 text-slate-400")
-                }
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className={
-                      "w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs " +
-                      (tripDossier.passport.status === "verified"
-                        ? "bg-emerald-100 text-emerald-800"
-                        : "bg-slate-200 text-slate-500")
-                    }
-                  >
-                    {tripDossier.passport.status === "verified" ? <Check className="w-4 h-4" /> : "1"}
-                  </div>
+            {/* Stage Checkpoints */}
+            <div className="space-y-3 text-xs">
+              {/* Checkpoint 1: Passport */}
+              <div className="p-3.5 rounded-2xl border flex items-center justify-between bg-slate-50 border-slate-200">
+                <div className="flex items-center gap-2.5">
+                  <Fingerprint className="w-4 h-4 text-slate-700" />
                   <div>
-                    <div className="font-bold text-slate-900 text-xs">International Passport</div>
-                    <div className="text-[11px] text-slate-500 font-mono">
+                    <div className="font-bold text-slate-900">1. Passport Validity Check</div>
+                    <div className="text-[11px] text-slate-500">
                       {tripDossier.passport.status === "verified"
-                        ? `${tripDossier.passport.name} (${tripDossier.passport.number})`
-                        : "Waiting for biometric check"}
+                        ? `A12345678 (Expires ${tripDossier.passport.expiry})`
+                        : "Pending Verification"}
                     </div>
                   </div>
                 </div>
-                <span
-                  className={
-                    "text-[10px] font-bold font-mono px-2 py-0.5 rounded-full " +
-                    (tripDossier.passport.status === "verified"
-                      ? "bg-emerald-100 text-emerald-800"
-                      : "bg-slate-200 text-slate-500")
-                  }
-                >
-                  {tripDossier.passport.status === "verified" ? "Verified ✓" : tripDossier.passport.status === "pending_review" ? "Unverified OCR (Pending Review)" : "Pending"}
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                  tripDossier.passport.status === "verified"
+                    ? "bg-emerald-100 text-emerald-800"
+                    : "bg-slate-200 text-slate-600"
+                }`}>
+                  {tripDossier.passport.status === "verified" ? "✓ Verified" : "Pending"}
                 </span>
               </div>
 
-              {/* 2. Flight Item */}
-              <div
-                className={
-                  "p-3.5 rounded-2xl border text-xs flex items-center justify-between transition-all " +
-                  (tripDossier.flight.status === "held"
-                    ? "bg-emerald-50/60 border-emerald-200/80 text-slate-800 shadow-subtle"
-                    : "bg-slate-50/60 border-slate-200 text-slate-400")
-                }
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className={
-                      "w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs " +
-                      (tripDossier.flight.status === "held"
-                        ? "bg-emerald-100 text-emerald-800"
-                        : "bg-slate-200 text-slate-500")
-                    }
-                  >
-                    {tripDossier.flight.status === "held" ? <Check className="w-4 h-4" /> : "2"}
-                  </div>
+              {/* Checkpoint 2: Bank Statement */}
+              <div className="p-3.5 rounded-2xl border flex items-center justify-between bg-slate-50 border-slate-200">
+                <div className="flex items-center gap-2.5">
+                  <Building2 className="w-4 h-4 text-slate-700" />
                   <div>
-                    <div className="font-bold text-slate-900 text-xs">Return Flight Reservation</div>
-                    <div className="text-[11px] text-slate-500 font-mono">
-                      {tripDossier.flight.status === "held"
-                        ? `${tripDossier.flight.airline} • PNR: ${tripDossier.flight.pnr}`
-                        : "Waiting for flight hold"}
+                    <div className="font-bold text-slate-900">2. 6-Month Bank Statement</div>
+                    <div className="text-[11px] text-slate-500">
+                      {tripDossier.bankStatement.status === "verified"
+                        ? `₦8.55M Average Balance (Passed £1,270 rule)`
+                        : "Threshold Evaluation"}
                     </div>
                   </div>
                 </div>
-                <span
-                  className={
-                    "text-[10px] font-bold font-mono px-2 py-0.5 rounded-full " +
-                    (tripDossier.flight.status === "held"
-                      ? "bg-emerald-100 text-emerald-800"
-                      : "bg-slate-200 text-slate-500")
-                  }
-                >
-                  {tripDossier.flight.status === "held" ? "Held (72h) ✓" : "Pending"}
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                  tripDossier.bankStatement.status === "verified"
+                    ? "bg-emerald-100 text-emerald-800"
+                    : "bg-slate-200 text-slate-600"
+                }`}>
+                  {tripDossier.bankStatement.status === "verified" ? "✓ Passed" : "Pending"}
                 </span>
               </div>
 
-              {/* 3. Hotel Item */}
-              <div
-                className={
-                  "p-3.5 rounded-2xl border text-xs flex items-center justify-between transition-all " +
-                  (tripDossier.hotel.status === "verified"
-                    ? "bg-emerald-50/60 border-emerald-200/80 text-slate-800 shadow-subtle"
-                    : "bg-slate-50/60 border-slate-200 text-slate-400")
-                }
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className={
-                      "w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs " +
-                      (tripDossier.hotel.status === "verified"
-                        ? "bg-emerald-100 text-emerald-800"
-                        : "bg-slate-200 text-slate-500")
-                    }
-                  >
-                    {tripDossier.hotel.status === "verified" ? <Check className="w-4 h-4" /> : "3"}
-                  </div>
+              {/* Checkpoint 3: VFS Appointment */}
+              <div className="p-3.5 rounded-2xl border flex items-center justify-between bg-slate-50 border-slate-200">
+                <div className="flex items-center gap-2.5">
+                  <Calendar className="w-4 h-4 text-slate-700" />
                   <div>
-                    <div className="font-bold text-slate-900 text-xs">Hotel Accommodation Proof</div>
-                    <div className="text-[11px] text-slate-500 font-mono">
-                      {tripDossier.hotel.status === "verified"
-                        ? `${tripDossier.hotel.name} • ${tripDossier.hotel.reference}`
-                        : "Waiting for accommodation voucher"}
+                    <div className="font-bold text-slate-900">3. VFS Biometrics Appointment</div>
+                    <div className="text-[11px] text-slate-500">
+                      {tripDossier.appointment.status === "confirmed"
+                        ? `${tripDossier.appointment.gwfRef} (${tripDossier.appointment.date})`
+                        : "Interview Scheduling"}
                     </div>
                   </div>
                 </div>
-                <span
-                  className={
-                    "text-[10px] font-bold font-mono px-2 py-0.5 rounded-full " +
-                    (tripDossier.hotel.status === "verified"
-                      ? "bg-emerald-100 text-emerald-800"
-                      : "bg-slate-200 text-slate-500")
-                  }
-                >
-                  {tripDossier.hotel.status === "verified" ? "Verified ✓" : "Pending"}
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                  tripDossier.appointment.status === "confirmed"
+                    ? "bg-emerald-100 text-emerald-800"
+                    : "bg-slate-200 text-slate-600"
+                }`}>
+                  {tripDossier.appointment.status === "confirmed" ? "✓ Booked" : "Pending"}
+                </span>
+              </div>
+
+              {/* Checkpoint 4: Flight PNR Hold */}
+              <div className="p-3.5 rounded-2xl border flex items-center justify-between bg-slate-50 border-slate-200">
+                <div className="flex items-center gap-2.5">
+                  <Plane className="w-4 h-4 text-slate-700" />
+                  <div>
+                    <div className="font-bold text-slate-900">4. Flight Ticket & PNR Hold</div>
+                    <div className="text-[11px] text-slate-500">
+                      {tripDossier.flight.status === "confirmed"
+                        ? `${tripDossier.flight.airline} (PNR: ${tripDossier.flight.pnr})`
+                        : "Direct Departure Routing"}
+                    </div>
+                  </div>
+                </div>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                  tripDossier.flight.status === "confirmed"
+                    ? "bg-emerald-100 text-emerald-800"
+                    : "bg-slate-200 text-slate-600"
+                }`}>
+                  {tripDossier.flight.status === "confirmed" ? "✓ Paid & Held" : "Pending"}
+                </span>
+              </div>
+
+              {/* Checkpoint 5: Hotel Stay Voucher */}
+              <div className="p-3.5 rounded-2xl border flex items-center justify-between bg-slate-50 border-slate-200">
+                <div className="flex items-center gap-2.5">
+                  <Hotel className="w-4 h-4 text-slate-700" />
+                  <div>
+                    <div className="font-bold text-slate-900">5. Hotel Consular Voucher</div>
+                    <div className="text-[11px] text-slate-500">
+                      {tripDossier.hotel.status === "confirmed"
+                        ? `${tripDossier.hotel.name} (${tripDossier.hotel.reference})`
+                        : "Certified Proof of Stay"}
+                    </div>
+                  </div>
+                </div>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                  tripDossier.hotel.status === "confirmed"
+                    ? "bg-emerald-100 text-emerald-800"
+                    : "bg-slate-200 text-slate-600"
+                }`}>
+                  {tripDossier.hotel.status === "confirmed" ? "✓ Confirmed" : "Pending"}
                 </span>
               </div>
             </div>
 
-            {/* Actions & Submission */}
-            <div className="space-y-2.5">
-              <Button
-                variant={isDossierComplete ? "primary" : "secondary"}
-                size="md"
-                disabled={!isDossierComplete || isAuditing}
-                onClick={handleExecuteAudit}
-                className={
-                  "w-full text-center justify-center cursor-pointer font-bold transition-all " +
-                  (isDossierComplete
-                    ? "bg-slate-900 hover:bg-black text-white shadow-sleek"
-                    : "")
-                }
-                icon={<ShieldCheck className="w-4 h-4" />}
-              >
-                {isDossierComplete
-                  ? "Submit Verified Application"
-                  : "Complete Steps in Chat to Submit"}
-              </Button>
-
-              {isDossierComplete && (
+            {/* Quick Demo Launchers */}
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+              <span className="text-[11px] font-bold uppercase text-slate-500 block">
+                Praise Demo Quick Launchers:
+              </span>
+              <div className="grid grid-cols-2 gap-2">
                 <button
-                  onClick={() => setPreviewDossierModal(true)}
-                  className="w-full py-2.5 rounded-2xl text-xs font-bold text-slate-700 bg-slate-100/80 hover:bg-slate-200 transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-subtle"
+                  onClick={() => handleJumpToStep(4)}
+                  className="p-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-800 font-bold text-[11px] text-left transition-all cursor-pointer"
                 >
-                  <Eye className="w-3.5 h-3.5 text-slate-500" />
-                  <span>Review Application Summary</span>
+                  🏦 Test Bank Statement
                 </button>
-              )}
-            </div>
-          </div>
-
-          {/* Quick FAQ / Assistance Card */}
-          <div className="bg-white rounded-[32px] border border-slate-200/80 shadow-sleek p-5 text-xs">
-            <div className="flex items-center gap-2 font-bold text-slate-900 mb-2.5">
-              <HelpCircle className="w-4 h-4 text-brand-600" />
-              <span>Ask the Concierge in Chat:</span>
-            </div>
-            <div className="flex flex-wrap gap-1.5 text-[11px]">
-              <button
-                onClick={() => handleSend("How much is the visa fee?")}
-                className="px-3 py-1.5 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200/60 text-slate-700 font-medium transition-colors cursor-pointer"
-              >
-                "How much is the visa fee?"
-              </button>
-              <button
-                onClick={() => handleSend("Do I need a yellow fever card?")}
-                className="px-3 py-1.5 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200/60 text-slate-700 font-medium transition-colors cursor-pointer"
-              >
-                "Do I need a yellow fever card?"
-              </button>
-              <button
-                onClick={() => handleSend("How long does processing take?")}
-                className="px-3 py-1.5 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200/60 text-slate-700 font-medium transition-colors cursor-pointer"
-              >
-                "How long does processing take?"
-              </button>
+                <button
+                  onClick={() => handleJumpToStep(5)}
+                  className="p-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-800 font-bold text-[11px] text-left transition-all cursor-pointer"
+                >
+                  💳 Test Paystack Visa Fee
+                </button>
+                <button
+                  onClick={() => handleJumpToStep(6)}
+                  className="p-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-800 font-bold text-[11px] text-left transition-all cursor-pointer"
+                >
+                  📅 Test VFS Interview
+                </button>
+                <button
+                  onClick={() => handleJumpToStep(9)}
+                  className="p-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-800 font-bold text-[11px] text-left transition-all cursor-pointer"
+                >
+                  ✈️ Test Paystack Flight
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Application Preview Modal */}
-      {previewDossierModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-white rounded-[32px] border border-slate-200 shadow-float max-w-lg w-full p-6 animate-in zoom-in-95 space-y-4">
-            <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <FileText className="w-5 h-5 text-brand-600" />
-                <h3 className="text-base font-extrabold text-slate-900">
-                  Application Summary: {tripDossier.destination}
-                </h3>
-              </div>
-              <button
-                onClick={() => setPreviewDossierModal(false)}
-                className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs text-slate-700">
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1.5">
-                <div className="font-bold text-slate-900 flex justify-between">
-                  <span>1. Applicant Biometrics & MRZ</span>
-                  <span className="text-emerald-700 font-mono font-semibold">✓ Verified</span>
-                </div>
-                <div>Name: <strong>{tripDossier.passport.name}</strong></div>
-                <div>Passport: <span className="font-mono">{tripDossier.passport.number}</span> • Nationality: {tripDossier.passport.nationality}</div>
-                <div>Expiry: {tripDossier.passport.expiry}</div>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1.5">
-                <div className="font-bold text-slate-900 flex justify-between">
-                  <span>2. Airline Reservation Hold</span>
-                  <span className="text-emerald-700 font-mono font-semibold">✓ PNR Locked</span>
-                </div>
-                <div>Flight: {tripDossier.flight.airline} ({tripDossier.flight.flightNumber})</div>
-                <div>Route: {tripDossier.flight.route}</div>
-                <div>PNR: <span className="font-mono font-bold text-brand-700">{tripDossier.flight.pnr}</span> • Price: {tripDossier.flight.price}</div>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1.5">
-                <div className="font-bold text-slate-900 flex justify-between">
-                  <span>3. Accommodation Confirmation</span>
-                  <span className="text-emerald-700 font-mono font-semibold">✓ Confirmed</span>
-                </div>
-                <div>Property: {tripDossier.hotel.name}</div>
-                <div>Location: {tripDossier.hotel.location}</div>
-                <div>Reference: <span className="font-mono font-bold">{tripDossier.hotel.reference}</span></div>
-              </div>
-            </div>
-
-            <Button
-              variant="primary"
-              size="md"
-              className="w-full text-center justify-center cursor-pointer bg-slate-900 hover:bg-black text-white py-3 rounded-2xl"
-              onClick={() => {
-                setPreviewDossierModal(false);
-                handleExecuteAudit();
-              }}
-              icon={<ShieldCheck className="w-4 h-4" />}
-            >
-              Submit Application
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Success Modal */}
-      {submittedModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-white rounded-[32px] border border-slate-200 shadow-float max-w-md w-full p-8 text-center animate-in zoom-in-95">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-700 mx-auto flex items-center justify-center mb-4 shadow-sm">
-              <CheckCircle2 className="w-8 h-8" />
-            </div>
-
-            <h3 className="text-xl font-black text-slate-900 mb-2">
-              Application Transmitted!
-            </h3>
-            <p className="text-xs text-slate-600 leading-relaxed mb-5">
-              Your verified documents, Emirates flight hold, and hotel reservation for <strong>{tripDossier.destination}</strong> have been packaged and submitted to consular immigration.
-            </p>
-
-            {auditResult && (
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs mb-4 text-left space-y-2">
-                <div className="flex justify-between items-center pb-2 border-b border-slate-200/60">
-                  <span className="font-bold text-slate-900">Graph Audit Result:</span>
-                  <span className={
-                    "font-mono font-bold px-2 py-0.5 rounded-full text-[10px] " +
-                    (auditResult.status === "COMPLIANT" || auditResult.overall_passed
-                      ? "bg-emerald-100 text-emerald-800"
-                      : "bg-amber-100 text-amber-800")
-                  }>
-                    {auditResult.status || (auditResult.overall_passed ? "COMPLIANT" : "DISCREPANCY_FOUND")}
-                  </span>
-                </div>
-
-                {auditResult.summary && (
-                  <p className="text-[11px] text-slate-700">{auditResult.summary}</p>
-                )}
-
-                {auditResult.discrepancies && auditResult.discrepancies.length > 0 && (
-                  <div className="space-y-1">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-amber-800">
-                      Discrepancies Noted ({auditResult.discrepancies.length})
-                    </div>
-                    {auditResult.discrepancies.slice(0, 2).map((d, i) => (
-                      <div key={i} className="text-[11px] text-slate-600 bg-amber-50/70 p-2 rounded-xl border border-amber-200/60">
-                        • {typeof d === "string" ? d : (d.detail || d.message || JSON.stringify(d))}
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {auditResult.assumptions && auditResult.assumptions.length > 0 && (
-                  <div className="p-2.5 rounded-xl bg-blue-50/70 border border-blue-200/60 text-[10px] text-blue-900 space-y-1">
-                    <div className="font-bold uppercase tracking-wider flex items-center gap-1">
-                      <span>Consular Assumptions & Notice:</span>
-                    </div>
-                    {auditResult.assumptions.map((a, i) => (
-                      <div key={i} className="leading-snug text-blue-800">• {a}</div>
-                    ))}
-                    <div className="text-[9px] text-blue-600 italic pt-0.5">
-                      Notice: This graph audit is a human-review aid, not formal legal or immigration advice.
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs mb-6 text-left space-y-1.5">
-              <div className="flex justify-between">
-                <span className="text-slate-500">Tracking Ref:</span>
-                <span className="font-mono font-bold text-slate-900">#TF-DXB-98421</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Turnaround:</span>
-                <span className="font-bold text-emerald-700">{tripDossier.processingTime}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Status:</span>
-                <span className="font-bold text-brand-600">Under Review</span>
-              </div>
-            </div>
-
-            <div className="space-y-2.5">
-              <Link to="/dashboard" className="block w-full">
-                <Button variant="primary" size="md" className="w-full justify-center bg-slate-900 hover:bg-black text-white py-3 rounded-2xl">
-                  View in Agency Desk
-                </Button>
-              </Link>
-              <Button
-                variant="secondary"
-                size="md"
-                className="w-full justify-center py-3 rounded-2xl"
-                onClick={() => setSubmittedModal(false)}
-              >
-                Back to Workspace
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Paystack Checkout Modal */}
+      <PaystackModal
+        isOpen={paystackOpen}
+        onClose={() => setPaystackOpen(false)}
+        onSuccess={(receipt) => {
+          if (paystackCallback) paystackCallback(receipt);
+        }}
+        amountNgn={paystackAmount}
+        purpose={paystackPurpose}
+        title={paystackTitle}
+        userEmail={user?.email || "applicant@travelforge.com"}
+      />
     </div>
   );
 };

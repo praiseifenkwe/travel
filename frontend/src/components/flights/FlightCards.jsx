@@ -40,10 +40,10 @@ export const FlightCards = ({ flights = [], onHoldFlight }) => {
       <div className="space-y-3">
         {flights.map((fl) => {
           const isBooked = bookedFlight && bookedFlight.id === fl.id;
-          const routeStr = fl.route || ${fl.origin_code || 'LOS'} → ;
+          const routeStr = fl.route || (fl.origin_code && fl.destination_code ? `${fl.origin_code} → ${fl.destination_code}` : 'LOS → LHR');
           const flightNum = fl.flight_no || fl.flight_number || 'FL-100';
           const cabinStr = fl.cabin || fl.class || 'Economy';
-          const priceDisplay = fl.price_formatted || (fl.price_ngn ? ₦ : '₦1,850,000');
+          const priceDisplay = fl.price_formatted || (fl.price_ngn ? `₦${Number(fl.price_ngn).toLocaleString()}` : '₦1,850,000');
 
           return (
             <div
@@ -134,7 +134,7 @@ export const FlightCards = ({ flights = [], onHoldFlight }) => {
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500 font-medium">Route:</span>
-                <span className="font-semibold text-slate-900">{selectedFlight.route || ${selectedFlight.origin_code} → }</span>
+                <span className="font-semibold text-slate-900">{selectedFlight.route || (selectedFlight.origin_code ? `${selectedFlight.origin_code} → ${selectedFlight.destination_code}` : 'LOS → LHR')}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500 font-medium">Luggage Allowance:</span>
@@ -142,7 +142,7 @@ export const FlightCards = ({ flights = [], onHoldFlight }) => {
               </div>
               <div className="flex justify-between border-t border-slate-200 pt-2">
                 <span className="text-slate-500 font-medium">Locked Price:</span>
-                <span className="font-black text-slate-900 text-sm">{selectedFlight.price_formatted || ₦}</span>
+                <span className="font-black text-slate-900 text-sm">{selectedFlight.price_formatted || '₦'}</span>
               </div>
             </div>
 

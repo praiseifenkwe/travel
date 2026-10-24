@@ -92,7 +92,7 @@ export const HotelCards = ({ hotels = [], onReserveHotel }) => {
 
               <div className="flex items-center justify-between pt-3 border-t border-slate-100 mt-2">
                 <div>
-                  <div className="text-sm font-black text-slate-900">{h.price_formatted || ₦/night}</div>
+                  <div className="text-sm font-black text-slate-900">{h.price_formatted || '₦/night'}</div>
                   <div className="text-[10px] text-emerald-600 font-medium">Free cancellation</div>
                 </div>
 
