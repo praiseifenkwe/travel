@@ -19,9 +19,7 @@ export const Navbar = () => {
             <span className="font-extrabold text-base tracking-tight text-slate-900">
               Travel<span className="text-indigo-600 font-black">Forge</span>
             </span>
-            <span className="hidden sm:inline-block text-[10px] font-bold text-slate-400 ml-2 px-1.5 py-0.5 rounded bg-slate-100 uppercase tracking-widest">
-              Consular OS
-            </span>
+
           </div>
         </Link>
 
@@ -64,9 +62,7 @@ export const Navbar = () => {
           >
             <ShieldCheck className="w-3.5 h-3.5 text-slate-500" />
             <span className="hidden sm:inline">Agency Review</span>
-            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-slate-200 text-slate-700">
-              Staff
-            </span>
+
           </Link>
         </nav>
 
@@ -78,11 +74,8 @@ export const Navbar = () => {
                 <div className="w-6 h-6 rounded-lg bg-slate-900 text-white flex items-center justify-center text-[10px] font-extrabold">
                   {user.name ? user.name.charAt(0).toUpperCase() : "U"}
                 </div>
-                <span className="max-w-[120px] truncate font-bold text-slate-900">
+                <span className="max-w-[140px] truncate font-bold text-slate-900">
                   {user.name || user.email}
-                </span>
-                <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 uppercase">
-                  {user.user_type || "Client"}
                 </span>
               </div>
               <button

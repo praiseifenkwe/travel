@@ -143,9 +143,7 @@ export const PassportVerificationCard = ({ onPassportVerified, onPassportRejecte
           </div>
         </div>
 
-        <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
-          Consular Step 1
-        </span>
+
       </div>
 
       {/* Hidden Real File Input */}
