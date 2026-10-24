@@ -77,6 +77,13 @@ export const apiService = {
       const res = await apiClient.get(`/applications/${applicationId}`);
       return res.data;
     },
+    updateIntake: async (applicationId, { facts, confirm_fields = [] }) => {
+      const res = await apiClient.patch(`/applications/${applicationId}/intake`, {
+        facts,
+        confirm_fields,
+      });
+      return res.data;
+    },
   },
 
   // 3. Document Processing & OCR
@@ -89,6 +96,12 @@ export const apiService = {
       const res = await apiClient.post("/documents/extract", form, {
         headers: { "Content-Type": undefined }, // Let browser set boundary
       });
+      return res.data;
+    },
+    review: async (documentId, { decision, review_notes = "", corrected_data = null }) => {
+      const payload = { decision, review_notes };
+      if (corrected_data) payload.corrected_data = corrected_data;
+      const res = await apiClient.post(`/documents/${documentId}/review`, payload);
       return res.data;
     },
   },
